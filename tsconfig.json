@@ -8,6 +8,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
+    // "moduleResolution": "nodenext",
     "target": "esnext",
     // For nodejs:
     "lib": ["esnext"],
@@ -39,5 +40,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
+  }, "ts-node": {"esm": true},
+"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/next-auth.d.ts"],
+"exclude": ["node_modules"]
 }
