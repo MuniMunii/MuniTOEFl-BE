@@ -3,21 +3,14 @@ import  Express from "express";
 import Credentials from "@auth/express/providers/credentials"
 import bcrypt from "bcrypt"
 import clientPromise from "../../config/mongo_client.js";
+import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import type { Db } from "mongodb";
 const app=Express()
-let db: Db;
-// Immediately-invoked async setup
-(async () => {
-  try {
-    const client = await clientPromise;
-    db = client.db("studyfirst");
-  } catch (err) {
-    console.log("database error", err);
-  }
-})();
+
 app.set("trust proxy",true)
 export const authConfig:ExpressAuthConfig={
     secret:process.env.AUTH_SECRET!,
+    adapter:MongoDBAdapter(clientPromise),
     debug:true,
     session:{strategy:'jwt'},
     // for temporary remove it when in prod
@@ -35,6 +28,7 @@ export const authConfig:ExpressAuthConfig={
           }
             const { email, password } = credentials;
             let user=null
+            const db=(await clientPromise).db('studyfirst')
             let findUser=await db.collection('users').findOne({email:email})
             if(!findUser)throw new Error('User not found')
             const pwHash=await bcrypt.compare(password as string,findUser.password)
@@ -48,11 +42,22 @@ export const authConfig:ExpressAuthConfig={
             provider: user.provider,
             image: user.image ?? null,
             noTelp: user.noTelp,
-            createAt: user.createAt.toISOString(), 
+            createdAt: user.createdAt.toISOString(), 
           }
         }
     })
 ],
+cookies: {
+  sessionToken: {
+    name: `next-auth.session-token`,
+    options: {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: false, // IMPORTANT: allow HTTP for localhost
+    },
+  },
+},
 callbacks: {
       async jwt({ token, user }) {
         if (user) {

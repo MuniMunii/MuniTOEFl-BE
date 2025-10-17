@@ -22,13 +22,15 @@ router.post("/create-user", async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const db=(await clientPromise).db('studyfirst')
     const user = db.collection("users");
+    if(await user.findOne({email})){return res.status(403).json(createResponse(false,'Email already Registered',null,'Email already Registered'))}
     const userStructure = {
-      createAt: new Date(),
+      createdAt: new Date(),
       noTelp,
       password: hashedPassword,
       provider: "Credentials",
       username,
       role: "user",
+      email,
       image: null,
     };
     const parsedUser = userSchema.safeParse(userStructure);
@@ -52,4 +54,9 @@ router.post("/create-user", async (req: Request, res: Response) => {
       .json(createResponse(false, "Internal Server Error", null, err));
   }
 });
+router.get('/session',async (req:Request,res:Response)=>{
+  const {session}=res.locals
+  if(!session){return res.status(401).json(createResponse(false,'Unauthorized',null,'Unauthorized'))}
+  res.status(200).json(createResponse(true,'Session isactive',session,false))
+})
 export default router;
