@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import clientPromise from "../../config/mongo_client.js";
 import { createResponse } from "../../utils/createResponse.js";
 import { userSchema} from "../../model/userScheme.js";
+import { authenticatedUser } from "../../lib/protectedRoute.js";
 const router = Express.Router();
 router.post("/create-user", async (req: Request, res: Response) => {
   try {
@@ -54,9 +55,16 @@ router.post("/create-user", async (req: Request, res: Response) => {
       .json(createResponse(false, "Internal Server Error", null, err));
   }
 });
-router.get('/session',async (req:Request,res:Response)=>{
+router.get('/session',async (_req:Request,res:Response)=>{
   const {session}=res.locals
   if(!session){return res.status(401).json(createResponse(false,'Unauthorized',null,'Unauthorized'))}
   res.status(200).json(createResponse(true,'Session isactive',session,false))
+})
+router.get('/dashboard',authenticatedUser,async (req:Request,res:Response)=>{
+  try{
+  const session=res.locals
+  if(!session)return res.status(401).json(createResponse(false,'Unauthorized',null,'Unauthorized'))
+  res.status(200).json(createResponse(true,'Successfully redirect',session))
+  }catch(err){return res.status(500).json(createResponse(false,'Internal server error',null,'Internal server error'))}
 })
 export default router;

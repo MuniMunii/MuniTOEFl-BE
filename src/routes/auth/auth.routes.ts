@@ -26,6 +26,7 @@ export const authConfig:ExpressAuthConfig={
             console.log('Missing credentials');
             return null;
           }
+          console.log("Incoming credentials:", credentials);
             const { email, password } = credentials;
             let user=null
             const db=(await clientPromise).db('studyfirst')
