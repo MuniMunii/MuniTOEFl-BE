@@ -5,7 +5,6 @@ import clientPromise from "../../config/mongo_client.js";
 import { createResponse } from "../../utils/createResponse.js";
 import { userSchema} from "../../model/userScheme.js";
 import { authenticatedUser } from "../../lib/protectedRoute.js";
-import { Auth } from "@auth/core"
 const router = Express.Router();
 router.post("/create-user", async (req: Request, res: Response) => {
   try {

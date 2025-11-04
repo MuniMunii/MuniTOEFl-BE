@@ -18,8 +18,6 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@auth/express": "^0.12.0",
-    "@auth/mongodb-adapter": "^3.11.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
