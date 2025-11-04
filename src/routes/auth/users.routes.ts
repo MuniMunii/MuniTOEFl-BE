@@ -5,6 +5,7 @@ import clientPromise from "../../config/mongo_client.js";
 import { createResponse } from "../../utils/createResponse.js";
 import { userSchema} from "../../model/userScheme.js";
 import { authenticatedUser } from "../../lib/protectedRoute.js";
+import { Auth } from "@auth/core"
 const router = Express.Router();
 router.post("/create-user", async (req: Request, res: Response) => {
   try {
@@ -67,4 +68,25 @@ router.get('/dashboard',authenticatedUser,async (req:Request,res:Response)=>{
   res.status(200).json(createResponse(true,'Successfully redirect',session))
   }catch(err){return res.status(500).json(createResponse(false,'Internal server error',null,'Internal server error'))}
 })
+  router.post('/auth-account',async (req:Request,res:Response)=>{
+    try{
+      const {password,email}=req.body
+              const db=(await clientPromise).db('studyfirst')
+              let findUser=await db.collection('users').findOne({email:email})
+              if(!findUser)return res.status(404).json(createResponse(false,'User not found',null,'User not match'))
+              const pwHash=await bcrypt.compare(password as string,findUser.password)
+              if(!pwHash)return res.status(404).json(createResponse(false,'Password not match',null,'Password not match'))
+              const user={
+              _id: findUser._id.toString(),
+              username: findUser.username,
+              email: findUser.email,
+              role:findUser.role,
+              provider: findUser.provider,
+              image:findUser.image ?? null,
+              noTelp: findUser.noTelp,
+              createdAt: findUser.createdAt.toISOString(), 
+            }
+              res.status(200).json(createResponse(true,'Successfully login',user,null))
+    }catch(err){res.status(500).json(createResponse(false,'Internal server error',null))}
+  })
 export default router;
