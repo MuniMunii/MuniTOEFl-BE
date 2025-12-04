@@ -1,3 +1,4 @@
+// Old scheme before using better-auth (not using this scheme again)
 import {z}from "zod"
 import { ObjectId } from "mongodb";
 export const userSchema=z.object({

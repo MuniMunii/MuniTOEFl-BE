@@ -1,57 +1,36 @@
 import Express from "express";
 import type { Request, Response } from "express";
-import bcrypt from "bcrypt";
-import clientPromise from "../../config/mongo_client.js";
 import { createResponse } from "../../utils/createResponse.js";
-import { userSchema} from "../../model/userScheme.js";
+import { cloudinary } from "../../config/cloudinary.js";
+import { upload } from "../../middleware/uploadMulter.js";
 const router = Express.Router();
-router.post("/create-user", async (req: Request, res: Response) => {
-  try {
-    const { password, username, email, noTelp } = req.body;
-    if (!password || !username || !email || !noTelp)
+router.post("/change-image",upload.single("image"),async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json(createResponse(false, "No file uploaded"));
+      }
+      // upload to Cloudinary
+      const uploadResult = cloudinary.uploader.upload_stream(
+        { folder: "user_images" },
+        (error, result) => {
+          if (error) {
+            return res.status(500).json(createResponse(false, "Upload failed", null, error));
+          }
+          // Return Cloudinary URL
+          res.json(
+            createResponse(true, "Image uploaded", { url: result?.secure_url })
+          );
+        }
+      );
+      // pipe buffer to cloudinary
+      uploadResult.end(file.buffer);
+    } catch (err) {
       return res
-        .status(403)
-        .json(
-          createResponse(
-            false,
-            "Must fill all input form",
-            null,
-            "Must fill all input form"
-          )
-        );
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const db=(await clientPromise).db('studyfirst')
-    const user = db.collection("users");
-    if(await user.findOne({email})){return res.status(403).json(createResponse(false,'Email already Registered',null,'Email already Registered'))}
-    const userStructure = {
-      createdAt: new Date(),
-      noTelp,
-      password: hashedPassword,
-      provider: "Credentials",
-      username,
-      role: "user",
-      email,
-      image: null,
-    };
-    const parsedUser = userSchema.safeParse(userStructure);
-    if (!parsedUser.success) {
-      return res
-        .status(400)
-        .json(
-          createResponse(
-            false,
-            "Invalid user data",
-            null,
-            parsedUser.error.flatten()
-          )
-        );
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
     }
-    await user.insertOne(parsedUser.data);
-    res.status(201).json(createResponse(true,'Successfull created account',parsedUser.data))
-  } catch (err) {
-    return res
-      .status(500)
-      .json(createResponse(false, "Internal Server Error", null, err));
   }
-});
+);
+
 export default router;

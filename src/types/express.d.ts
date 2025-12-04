@@ -1,5 +1,6 @@
 import { Session,User } from "better-auth";
-export type AuthUser = typeof auth.$Infer.User;
+import { auth } from "../routes/auth/auth.routes.ts";
+export type AuthUser = typeof auth.$Infer.user;
 declare global {
   namespace Express {
     interface Request {

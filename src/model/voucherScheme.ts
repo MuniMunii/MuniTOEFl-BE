@@ -7,4 +7,12 @@ export const VoucherScheme=z.object({
     used:z.boolean(),
     createdAt:z.date()
 })
+export const ActivatedVoucherScheme=z.object({
+    id:z.string(),
+    usedBy:z.string(),
+    typeV:z.enum(['listening','reading','speaking','writing']),
+    activatedAt:z.date(),
+    expiredAt:z.date()
+})
 export type VoucherType=z.infer<typeof VoucherScheme>
+export type ActivatedVoucherType=z.infer<typeof ActivatedVoucherScheme>
