@@ -22,7 +22,7 @@ router.post(
           .json(createResponse(false, "Max 10 vouchers allowed"));
       }
       const voucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("vouchers");
       const generateID = () => `STDF-${nanoid(6)}`;
       const vouchersData = Array.from({ length: orderLength }).map(() => ({
@@ -63,7 +63,7 @@ router.delete(
             )
           );
       const voucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("vouchers");
       await voucher.deleteOne({ id: id });
       res
@@ -84,7 +84,7 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const voucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("vouchers");
       const getVoucher = await voucher.find({}).toArray();
       return res.status(200).json({
@@ -106,7 +106,7 @@ router.post(
     try {
       const { id } = req.body;
       const voucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("vouchers");
       const findVoucher = await voucher.findOne({ id: id });
       console.log(id);
@@ -124,7 +124,7 @@ router.post(
       }
       await voucher.updateOne({ id }, { $set: { used: true } });
       const activateVoucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("activated-voucher");
       const months = Number(findVoucher.duration);
       const expiredAt = new Date();
@@ -162,7 +162,7 @@ router.get(
     try {
       const { name } = req.user;
       const activatedVoucher = (await clientPromise)
-        .db("studyfirst")
+        .db("muniquizNew")
         .collection("activated-voucher");
       const findActivatedVoucherByUser =await activatedVoucher
         .find({ usedBy: name })

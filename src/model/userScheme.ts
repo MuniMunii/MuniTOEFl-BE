@@ -1,4 +1,5 @@
 // Old scheme before using better-auth (not using this scheme again)
+// check file express.d.ts for user scheme/type
 import {z}from "zod"
 import { ObjectId } from "mongodb";
 export const userSchema=z.object({

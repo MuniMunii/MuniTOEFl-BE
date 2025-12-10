@@ -2,7 +2,7 @@ import {betterAuth}from 'better-auth'
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import clientPromise from '../../config/mongo_client.js';
 import {admin}from 'better-auth/plugins'
-const db=(await clientPromise).db('studyfirst') 
+const db=(await clientPromise).db("muniquizNew") 
 const client=await clientPromise
 export const auth=betterAuth({
   plugins:[admin()],
