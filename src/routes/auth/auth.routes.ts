@@ -9,8 +9,8 @@ export const auth=betterAuth({
   database:mongodbAdapter(db,{client:client}),
   // nanti di change ke origin asli saat di deploy
   trustedOrigins:['http://localhost:5173'],
+  emailAndPassword:{enabled:true}, 
   
-  emailAndPassword:{enabled:true},
   user:{additionalFields:{
     role:{type:"string",input:false,defaultValue:'user'},
     noTelp:{type:'string',input:true}
@@ -21,7 +21,8 @@ export const auth=betterAuth({
       clientSecret:process.env.AUTH_GOOGLE_SECRET as string,
     }
   },
-  session: {cookieCache:{
+  session: {
+    cookieCache:{
     enabled:true,
     maxAge:60 * 5 //5 menit
   },

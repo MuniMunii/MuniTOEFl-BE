@@ -191,4 +191,25 @@ router.get(
     }
   }
 );
+router.get('/get-active-voucher-test',sessionMiddleware,requireAuth,async (req:Request,res:Response)=>{
+  try{
+  const {name}=req.user
+  const dateNow=new Date()
+  const activeVouchers=(await clientPromise).db('muniquizNew').collection('activated-vouchers')
+  const metaTest=(await clientPromise).db('muniquizNew').collection('meta-tests')
+  const getActivatedVoucherByUser=await activeVouchers.find({usedBy:name,expiredAt:{$gt:dateNow}}).toArray()
+  // ambil types yang udah di activasi sama user dengan mapping typeV
+  const unlockedTypes=new Set(getActivatedVoucherByUser.map(v=>v.typeV))
+  // return data yang test free dan type yang sudah di unlock sama user dengan di compare sama set di atas
+  const getTest=await metaTest.find({$or:[
+    {free:true},
+    {type:{$in:unlockedTypes}}
+  ]}).toArray()
+  return res.json(createResponse(true,'Successfully fetch',getTest,false,))
+}catch(err){
+      res
+        .status(500)
+        .json(createResponse(false, "Internal server error", null));
+    }
+})
 export default router;
