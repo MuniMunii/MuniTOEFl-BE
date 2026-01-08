@@ -1,5 +1,45 @@
 import { ObjectId } from 'mongodb'
 import {z}from 'zod'
+type JSONContent = {
+    /**
+     * The type of the node
+     */
+    type?: string;
+    /**
+     * The attributes of the node. Attributes can have any JSON-serializable value.
+     */
+    attrs?: Record<string, any> | undefined;
+    /**
+     * The children of the node. A node can have other nodes as children.
+     */
+    content?: JSONContent[];
+    /**
+     * A list of marks of the node. Inline nodes can have marks.
+     */
+    marks?: {
+        /**
+         * The type of the mark
+         */
+        type: string;
+        /**
+         * The attributes of the mark. Attributes can have any JSON-serializable value.
+         */
+        attrs?: Record<string, any>;
+        [key: string]: any;
+    }[];
+    /**
+     * The text content of the node. This property is only present on text nodes
+     * (i.e. nodes with `type: 'text'`).
+     *
+     * Text nodes cannot have children, but they can have marks.
+     */
+    text?: string;
+    [key: string]: any;
+};
+type HTMLContent = string;
+export type Content = HTMLContent | JSONContent | JSONContent[] | null;
+const ContentDesc:z.ZodType<Content>=z.any()
+
 export const metaTestDataScheme=z.object({
     type:z.enum(['listening','reading','speaking','writing'],'type does not exist'),
     titleSlug:z.string(),
@@ -13,6 +53,7 @@ export const questionScheme=z.object({
     testId:z.instanceof(ObjectId),//Ref from meta test
     order:z.number(),
     qTitle:z.string(),
+    qDescription:ContentDesc,
     choices:z.array(z.object({
         cTitle:z.string(),
         correctAnswer:z.boolean()
