@@ -40,6 +40,15 @@ type HTMLContent = string;
 export type Content = HTMLContent | JSONContent | JSONContent[] | null;
 const ContentDesc:z.ZodType<Content>=z.any()
 
+export const ALLOWED_META_PROPS = [
+  "title",
+  "titleSlug",
+  "type",
+  "published",
+  "description",
+  "time",
+  "isFree",
+] as const;
 export const metaTestDataScheme=z.object({
     type:z.enum(['listening','reading','speaking','writing'],'type does not exist'),
     titleSlug:z.string(),
@@ -60,4 +69,5 @@ export const questionScheme=z.object({
     })).min(2,'Must contain atleast 2 elements').max(5,'5 is max elements')
 })
 export type metaTestDataType=z.infer<typeof metaTestDataScheme>
+export type AllowedMetaProp = typeof ALLOWED_META_PROPS[number];
 export type questionType=z.infer<typeof questionScheme>

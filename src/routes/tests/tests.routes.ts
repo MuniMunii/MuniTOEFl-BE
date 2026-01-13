@@ -6,7 +6,9 @@ import { sessionMiddleware } from "../../middleware/sessionMiddleware.js";
 import clientPromise from "../../config/mongo_client.js";
 import { createResponse } from "../../utils/createResponse.js";
 import {
+  ALLOWED_META_PROPS,
   metaTestDataScheme,
+  type AllowedMetaProp,
   type Content,
   type metaTestDataType,
   type questionType,
@@ -364,4 +366,37 @@ router.patch('/save-questions/:testId/save',
       await session.endSession()
     }
   })
+  
+  router.patch('/update-meta/:prop/:testId',
+  sessionMiddleware,
+  requireAuth,
+  requireRoleAdmin("admin"),
+  async (req:Request,res:Response)=>{
+    try{
+      const {prop,testId}=req.params
+      const value = req.body.value;
+      if(!testId||!prop)return res.status(400).json(createResponse(false,'Test Id cannot be empty',null,'Test Id cannot be empty'))
+        if (!ALLOWED_META_PROPS.includes(prop as AllowedMetaProp)) {
+        return res
+          .status(400)
+          .json(createResponse(false, "Invalid property", null));
+      }
+      if (value === undefined) {
+        return res
+          .status(400)
+          .json(createResponse(false, "Value is required", null));
+      }
+      const metaTestCollection=(await clientPromise).db('muniquizNew').collection('meta_tests')
+      const _id=ObjectId.createFromHexString(testId)
+      const findMetaTestCollection=await metaTestCollection.findOne({_id})
+      if(!findMetaTestCollection)return res.sendStatus(204);
+      await metaTestCollection.updateOne({_id},{ $set: { [prop]: value } })
+      res.status(200).json(createResponse(true, "Updated successfully", null))
+    }catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  }
+)
 export default router;
