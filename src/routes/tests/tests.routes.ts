@@ -27,6 +27,7 @@ router.post(
         titleSlug: slugify(req.body.title),
         published: false,
         time: "120m",
+        
       });
       if (!parsed.success) {
         return res
@@ -34,8 +35,8 @@ router.post(
           .json(createResponse(false, "Invalid payload", null, parsed.error));
       }
       const db = (await clientPromise).db("muniquizNew");
-      const metaTests = db.collection("meta-tests");
-      const questions = db.collection("questions-test");
+      const metaTests = db.collection("meta_tests");
+      const questions = db.collection("questions_test");
       const EMPTY_DESCRIPTION_STATE: Content = {
         type: "doc",
         content: [
@@ -100,7 +101,7 @@ router.post(
           .status(403)
           .json(createResponse(false, "Type or Title is empty", null));
       const db = (await clientPromise).db("muniquizNew");
-      const metaDataTestCollection = db.collection("meta-tests");
+      const metaDataTestCollection = db.collection("meta_tests");
       const findMetaTest = await metaDataTestCollection.findOne({
         type,
         titleSlug,
@@ -131,16 +132,16 @@ router.post(
     try {
       const { type } = req.params;
       const db = (await clientPromise).db("muniquizNew");
-      const metaTestCollections = db.collection("meta-tests");
+      const metaTestCollections = db.collection("meta_tests");
       const findTestByType = await metaTestCollections.find({ type }).toArray();
       if (findTestByType.length === 0)
         return res
-          .status(204)
+          .status(200)
           .json(
             createResponse(
-              false,
+              true,
               `Test ${type} by is empty`,
-              null,
+              [],
               "Test is empty"
             )
           );
@@ -167,8 +168,8 @@ router.delete(
       const { id } = req.body;
       const db = (await clientPromise).db("muniquizNew");
       const _id = ObjectId.createFromHexString(id);
-      const metaTestCollections = db.collection("meta-tests");
-      const questionCollections = db.collection("questions-test");
+      const metaTestCollections = db.collection("meta_tests");
+      const questionCollections = db.collection("questions_test");
       session.startTransaction();
       const findMetaTest = await metaTestCollections.findOne(
         { _id },
@@ -215,7 +216,7 @@ router.post(
       const _id = ObjectId.createFromHexString(testId);
       const questionCollections = (await clientPromise)
         .db("muniquizNew")
-        .collection("questions-test");
+        .collection("questions_test");
       const findQuestions = await questionCollections
         .find({ testId: _id })
         .toArray();
@@ -254,8 +255,8 @@ router.post('/add-question/:testId',
     try{
       const {testId}=req.params
       if(!testId)return res.status(403).json(createResponse(false,'Need testId',null,'Need testId'))
-      const questionsTestCollection=(await clientPromise).db('muniquizNew').collection('questions-test')
-      const metaTestCollection=(await clientPromise).db('muniquizNew').collection('meta-tests')
+      const questionsTestCollection=(await clientPromise).db('muniquizNew').collection("questions_test")
+      const metaTestCollection=(await clientPromise).db('muniquizNew').collection("meta_tests")
       const _id = ObjectId.createFromHexString(testId);
       const findMetaTest=await metaTestCollection.findOne({_id})
       if(!findMetaTest)return res.status(404).json(createResponse(false,'Test not found',null,'Test not found'))
@@ -303,7 +304,7 @@ router.post('/add-question/:testId',
     try{
       const {testId,_id}=req.params
       if(!testId||!_id)return res.status(403).json(createResponse(false,'Must have testId and _id',null,'Must have testId and _id'))
-      const questionsTest=(await clientPromise).db('muniquizNew').collection('questions-test')
+      const questionsTest=(await clientPromise).db('muniquizNew').collection("questions_test")
       const id = ObjectId.createFromHexString(_id);
       const testIdToObjectId = ObjectId.createFromHexString(testId);
       const findQuestion=await questionsTest.findOne({testId:testIdToObjectId,_id:id})
@@ -333,7 +334,7 @@ router.patch('/save-questions/:testId/save',
           .status(400)
           .json(createResponse(false, "Invalid payload", null))
       }
-   const questionsTestCollection=(await clientPromise).db('muniquizNew').collection('questions-test')
+   const questionsTestCollection=(await clientPromise).db('muniquizNew').collection("questions_test")
     session.startTransaction()
     await questionsTestCollection.bulkWrite(
       questions.map((q,i)=>({

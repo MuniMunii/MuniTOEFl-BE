@@ -6,6 +6,7 @@ const db=(await clientPromise).db("muniquizNew")
 const client=await clientPromise
 export const auth=betterAuth({
   plugins:[admin()],
+  rateLimit:{enabled:true,window:15 * 60 * 1000,max:5},
   database:mongodbAdapter(db,{client:client}),
   // nanti di change ke origin asli saat di deploy
   trustedOrigins:['http://localhost:5173'],

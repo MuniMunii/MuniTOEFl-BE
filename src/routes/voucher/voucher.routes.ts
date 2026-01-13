@@ -125,7 +125,7 @@ router.post(
       await voucher.updateOne({ id }, { $set: { used: true } });
       const activateVoucher = (await clientPromise)
         .db("muniquizNew")
-        .collection("activated-voucher");
+        .collection("activated_voucher");
       const months = Number(findVoucher.duration);
       const expiredAt = new Date();
       expiredAt.setMonth(expiredAt.getMonth() + months);
@@ -163,7 +163,7 @@ router.get(
       const { name } = req.user;
       const activatedVoucher = (await clientPromise)
         .db("muniquizNew")
-        .collection("activated-voucher");
+        .collection("activated_voucher");
       const findActivatedVoucherByUser =await activatedVoucher
         .find({ usedBy: name })
         .toArray();
@@ -195,8 +195,8 @@ router.get('/get-active-voucher-test',sessionMiddleware,requireAuth,async (req:R
   try{
   const {name}=req.user
   const dateNow=new Date()
-  const activeVouchers=(await clientPromise).db('muniquizNew').collection('activated-vouchers')
-  const metaTest=(await clientPromise).db('muniquizNew').collection('meta-tests')
+  const activeVouchers=(await clientPromise).db('muniquizNew').collection("activated_vouchers")
+  const metaTest=(await clientPromise).db('muniquizNew').collection("meta_tests")
   const getActivatedVoucherByUser=await activeVouchers.find({usedBy:name,expiredAt:{$gt:dateNow}}).toArray()
   // ambil types yang udah di activasi sama user dengan mapping typeV
   const unlockedTypes=new Set(getActivatedVoucherByUser.map(v=>v.typeV))

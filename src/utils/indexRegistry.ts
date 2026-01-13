@@ -11,7 +11,7 @@ type CollectionIndexes = {
 };
 export const indexRegistry: CollectionIndexes[] = [
   {
-    collection: "meta-tests",
+    collection: "meta_tests",
     indexes: [
       {
         keys: { type: 1, titleSlug: 1 },
@@ -19,6 +19,15 @@ export const indexRegistry: CollectionIndexes[] = [
       },
     ],
   },
+  {
+    collection:"questions_test",
+    indexes:[
+      {
+        keys:{testId:1,order:1},
+        options:{unique:true}
+      }
+    ]
+  }
 /**
  * @Example
  *   {

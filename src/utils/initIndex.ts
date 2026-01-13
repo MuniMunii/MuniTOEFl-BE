@@ -4,6 +4,9 @@ import { indexRegistry } from "./indexRegistry.js";
 
 export async function initIndexes() {
   const db = (await clientPromise).db("muniquizNew");
+  // Debug after renaming collections
+    //   const listDb=await db.listCollections().toArray()
+    // console.log(listDb)
   for (const { collection, indexes } of indexRegistry) {
     const col = db.collection(collection);
     for (const index of indexes) {
