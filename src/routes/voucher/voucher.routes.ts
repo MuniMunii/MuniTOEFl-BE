@@ -7,6 +7,7 @@ import { requireAuth } from "../../middleware/protectedApi.js";
 import { sessionMiddleware } from "../../middleware/sessionMiddleware.js";
 import { requireRoleAdmin } from "../../middleware/adminOnly.js";
 import type { ActivatedVoucherType } from "../../model/voucherScheme.js";
+import { ObjectId } from "mongodb";
 const router = Express.Router();
 router.post(
   "/add-voucher",
@@ -134,7 +135,7 @@ router.post(
         typeV: findVoucher.typeV,
         activatedAt: new Date(),
         expiredAt,
-        usedBy: req.user.name,
+        usedBy: ObjectId.createFromHexString(req.user.id),
       };
       await activateVoucher.insertOne(activatedVoucherObject);
       res
@@ -160,12 +161,12 @@ router.get(
   requireAuth,
   async (req: Request, res: Response) => {
     try {
-      const { name } = req.user;
+      const { id } = req.user;
       const activatedVoucher = (await clientPromise)
         .db("muniquizNew")
         .collection("activated_voucher");
       const findActivatedVoucherByUser =await activatedVoucher
-        .find({ usedBy: name })
+        .find({ usedBy: ObjectId.createFromHexString(id) })
         .toArray();
       if (findActivatedVoucherByUser.length===0) {
         return res

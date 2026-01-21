@@ -6,6 +6,7 @@ import { auth } from "./routes/auth/auth.routes.js";
 import VoucherRoutes from "./routes/voucher/voucher.routes.js"
 import UsersRoutes from "./routes/auth/users.routes.js"
 import TestRoutes from './routes/tests/tests.routes.js'
+import TestAttempsRoutes from './routes/tests/testAttemps.routes.js'
 import { initIndexes } from "./utils/initIndex.js";
 import {rateLimit} from "express-rate-limit"
 const app=Express()
@@ -20,22 +21,34 @@ app.use(cookieParser())
 app.use('/api/auth/*splat',toNodeHandler(auth))
 app.use(
   "/api/voucher",
-  rateLimit({ windowMs: 1 * 60 * 1000, limit: 20 }),
+  rateLimit({ windowMs: 1 * 60 * 1000, limit: 20,
+    message: "Too many requests, please try again later.", }),
   VoucherRoutes
 );
 app.use(
   "/api/user",
-  rateLimit({ windowMs: 5 * 60 * 1000, limit: 50 }),
+  rateLimit({ windowMs: 5 * 60 * 1000, limit: 50,
+    message: "Too many requests, please try again later.", }),
   UsersRoutes
 );
 app.use(
   "/api/test",
-//   rateLimit({
-//     windowMs: 1 * 60 * 1000,
-//     limit: 100,
-//     message: "Too many requests, please try again later.",
-//   }),
+  rateLimit({
+    windowMs: 1 * 60 * 1000,
+    limit: 100,
+    message: "Too many requests, please try again later.",
+  }),
   TestRoutes
 );
+app.use(
+  "/api/test-attempt",
+  rateLimit({
+  windowMs: 1 * 60 * 1000,
+  limit: 500,
+    message: "Too many requests, please try again later.",
+  }),
+  TestAttempsRoutes
+);
+
 app.listen(port,()=>{return console.log(`app listen to port ${port}`)})
 console.log('testing node-ts')

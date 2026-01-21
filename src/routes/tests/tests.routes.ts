@@ -29,7 +29,6 @@ router.post(
         titleSlug: slugify(req.body.title),
         published: false,
         time: "120m",
-        
       });
       if (!parsed.success) {
         return res
@@ -88,7 +87,7 @@ router.post(
     } finally {
       await session.endSession();
     }
-  }
+  },
 );
 
 router.post(
@@ -112,19 +111,19 @@ router.post(
         return res
           .status(404)
           .json(
-            createResponse(false, "Item not found", null, "Item not found")
+            createResponse(false, "Item not found", null, "Item not found"),
           );
       res
         .status(200)
         .json(
-          createResponse(true, "Successfully fetch data", findMetaTest, false)
+          createResponse(true, "Successfully fetch data", findMetaTest, false),
         );
     } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  }
+  },
 );
 router.post(
   "/get-test/:type",
@@ -144,20 +143,20 @@ router.post(
               true,
               `Test ${type} by is empty`,
               [],
-              "Test is empty"
-            )
+              "Test is empty",
+            ),
           );
       res
         .status(200)
         .json(
-          createResponse(true, "Successfully fetch data", findTestByType, null)
+          createResponse(true, "Successfully fetch data", findTestByType, null),
         );
     } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  }
+  },
 );
 router.delete(
   "/delete-test",
@@ -175,13 +174,13 @@ router.delete(
       session.startTransaction();
       const findMetaTest = await metaTestCollections.findOne(
         { _id },
-        { session }
+        { session },
       );
       if (!findMetaTest)
         return res
           .status(404)
           .json(
-            createResponse(false, "Test not found", null, "Test not found")
+            createResponse(false, "Test not found", null, "Test not found"),
           );
       await Promise.all([
         metaTestCollections.deleteOne({ _id }, { session }),
@@ -199,7 +198,7 @@ router.delete(
     } finally {
       await session.endSession();
     }
-  }
+  },
 );
 router.post(
   "/get-question/admin/:testId",
@@ -213,7 +212,7 @@ router.post(
         return res
           .status(400)
           .json(
-            createResponse(false, "Incorrect testId", null, "Incorrect testId")
+            createResponse(false, "Incorrect testId", null, "Incorrect testId"),
           );
       const _id = ObjectId.createFromHexString(testId);
       const questionCollections = (await clientPromise)
@@ -230,8 +229,8 @@ router.post(
               false,
               "There are no question",
               null,
-              "There are No question"
-            )
+              "There are No question",
+            ),
           );
       res
         .status(200)
@@ -240,29 +239,43 @@ router.post(
             true,
             "Successfully fetch questions",
             findQuestions,
-            null
-          )
+            null,
+          ),
         );
     } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  }
+  },
 );
-router.post('/add-question/:testId',
+router.post(
+  "/add-question/:testId",
   sessionMiddleware,
   requireAuth,
-  requireRoleAdmin("admin"),async (req:Request,res:Response)=>{
-    try{
-      const {testId}=req.params
-      if(!testId)return res.status(403).json(createResponse(false,'Need testId',null,'Need testId'))
-      const questionsTestCollection=(await clientPromise).db('muniquizNew').collection("questions_test")
-      const metaTestCollection=(await clientPromise).db('muniquizNew').collection("meta_tests")
+  requireRoleAdmin("admin"),
+  async (req: Request, res: Response) => {
+    try {
+      const { testId } = req.params;
+      if (!testId)
+        return res
+          .status(403)
+          .json(createResponse(false, "Need testId", null, "Need testId"));
+      const questionsTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("questions_test");
+      const metaTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("meta_tests");
       const _id = ObjectId.createFromHexString(testId);
-      const findMetaTest=await metaTestCollection.findOne({_id})
-      if(!findMetaTest)return res.status(404).json(createResponse(false,'Test not found',null,'Test not found'))
-        const EMPTY_DESCRIPTION_STATE: Content = {
+      const findMetaTest = await metaTestCollection.findOne({ _id });
+      if (!findMetaTest)
+        return res
+          .status(404)
+          .json(
+            createResponse(false, "Test not found", null, "Test not found"),
+          );
+      const EMPTY_DESCRIPTION_STATE: Content = {
         type: "doc",
         content: [
           {
@@ -280,9 +293,14 @@ router.post('/add-question/:testId',
           },
         ],
       };
+      const lastQuestion = await questionsTestCollection.findOne(
+        { testId: findMetaTest._id },
+        { sort: { order: -1 } },
+      );
+      const nextOrder = lastQuestion ? lastQuestion.order + 1 : 1;
       const questionData: questionType = {
         testId: findMetaTest._id,
-        order: 1,
+        order: nextOrder,
         qTitle: "Question Title",
         qDescription: EMPTY_DESCRIPTION_STATE,
         choices: [
@@ -290,93 +308,149 @@ router.post('/add-question/:testId',
           { cTitle: "Title choices 2", correctAnswer: false },
         ],
       };
-      await questionsTestCollection.insertOne(questionData)
-      res.status(201).json(createResponse(true,'Success created question',questionData,false))
-    }catch (err) {
+      await questionsTestCollection.insertOne(questionData);
+      res
+        .status(201)
+        .json(
+          createResponse(true, "Success created question", questionData, false),
+        );
+    } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  })
-  router.delete('/delete-question/:testId/:_id',
+  },
+);
+router.delete(
+  "/delete-question/:testId/:_id",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
-  async (req:Request,res:Response)=>{
-    try{
-      const {testId,_id}=req.params
-      if(!testId||!_id)return res.status(403).json(createResponse(false,'Must have testId and _id',null,'Must have testId and _id'))
-      const questionsTest=(await clientPromise).db('muniquizNew').collection("questions_test")
+  async (req: Request, res: Response) => {
+    try {
+      const { testId, _id } = req.params;
+      if (!testId || !_id)
+        return res
+          .status(403)
+          .json(
+            createResponse(
+              false,
+              "Must have testId and _id",
+              null,
+              "Must have testId and _id",
+            ),
+          );
+      const questionsTest = (await clientPromise)
+        .db("muniquizNew")
+        .collection("questions_test");
       const id = ObjectId.createFromHexString(_id);
       const testIdToObjectId = ObjectId.createFromHexString(testId);
-      const findQuestion=await questionsTest.findOne({testId:testIdToObjectId,_id:id})
-      if(!findQuestion)return res.status(404).json(createResponse(false,'Question not found',null,'Question not found'))
-        await questionsTest.deleteOne({testId:testIdToObjectId,_id:id})
-      return res.status(200).json(createResponse(true,'Question Successfully deleted',null,false))
-    }
-    catch (err) {
-      return res
-        .status(500)
-        .json(createResponse(false, "Internal Server Error", null, err));
-    }
-  }
-)
-router.patch('/save-questions/:testId/save',
-  sessionMiddleware,
-  requireAuth,
-  requireRoleAdmin("admin"),async (req:Request,res:Response)=>{
-    const session=(await clientPromise).startSession()
-    try{
-    const {testId}=req.params
-    const { questions } = req.body as {
-        questions: (questionType & { _id: string })[]
-      }
-      if (!Array.isArray(questions)||!testId) {
+      const findQuestion = await questionsTest.findOne({
+        testId: testIdToObjectId,
+        _id: id,
+      });
+      if (!findQuestion)
         return res
-          .status(400)
-          .json(createResponse(false, "Invalid payload", null))
-      }
-   const questionsTestCollection=(await clientPromise).db('muniquizNew').collection("questions_test")
-    session.startTransaction()
-    await questionsTestCollection.bulkWrite(
-      questions.map((q,i)=>({
-        updateOne:{
-          filter:{_id:ObjectId.createFromHexString(q._id),testId:ObjectId.createFromHexString(testId)},
-          update:{
-            $set:{
-              order:i+1,
-              qTitle:q.qTitle,
-              qDescription:q.qDescription,
-              choices:q.choices
-            }
-          },
-        }
-      })),
-      {session}
-    )
-    await session.commitTransaction()
-    res.status(200).json(createResponse(true,'Successfully updated questions',null,false))
-    }
-    catch (err) {
-      await session.abortTransaction()
+          .status(404)
+          .json(
+            createResponse(
+              false,
+              "Question not found",
+              null,
+              "Question not found",
+            ),
+          );
+      await questionsTest.deleteOne({ testId: testIdToObjectId, _id: id });
+      return res
+        .status(200)
+        .json(
+          createResponse(true, "Question Successfully deleted", null, false),
+        );
+    } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
-    }finally{
-      await session.endSession()
     }
-  })
-  
-  router.patch('/update-meta/:prop/:testId',
+  },
+);
+router.patch(
+  "/save-questions/:testId/save",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
-  async (req:Request,res:Response)=>{
-    try{
-      const {prop,testId}=req.params
+  async (req: Request, res: Response) => {
+    const session = (await clientPromise).startSession();
+    try {
+      const { testId } = req.params;
+      const { questions } = req.body as {
+        questions: (questionType & { _id: string })[];
+      };
+      if (!Array.isArray(questions) || !testId) {
+        return res
+          .status(400)
+          .json(createResponse(false, "Invalid payload", null));
+      }
+      const questionsTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("questions_test");
+      session.startTransaction();
+      await questionsTestCollection.bulkWrite(
+        questions.map((q, i) => ({
+          updateOne: {
+            filter: {
+              _id: ObjectId.createFromHexString(q._id),
+              testId: ObjectId.createFromHexString(testId),
+            },
+            update: {
+              $set: {
+                order: i + 1,
+                qTitle: q.qTitle,
+                qDescription: q.qDescription,
+                choices: q.choices,
+              },
+            },
+          },
+        })),
+        { session },
+      );
+      await session.commitTransaction();
+      res
+        .status(200)
+        .json(
+          createResponse(true, "Successfully updated questions", null, false),
+        );
+    } catch (err) {
+      await session.abortTransaction();
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    } finally {
+      await session.endSession();
+    }
+  },
+);
+
+router.patch(
+  "/update-meta/:prop/:testId",
+  sessionMiddleware,
+  requireAuth,
+  requireRoleAdmin("admin"),
+  async (req: Request, res: Response) => {
+    try {
+      const { prop, testId } = req.params;
       const value = req.body.value;
-      if(!testId||!prop)return res.status(400).json(createResponse(false,'Test Id cannot be empty',null,'Test Id cannot be empty'))
-        if (!ALLOWED_META_PROPS.includes(prop as AllowedMetaProp)) {
+      if (!testId || !prop)
+        return res
+          .status(400)
+          .json(
+            createResponse(
+              false,
+              "Test Id cannot be empty",
+              null,
+              "Test Id cannot be empty",
+            ),
+          );
+      if (!ALLOWED_META_PROPS.includes(prop as AllowedMetaProp)) {
         return res
           .status(400)
           .json(createResponse(false, "Invalid property", null));
@@ -386,17 +460,19 @@ router.patch('/save-questions/:testId/save',
           .status(400)
           .json(createResponse(false, "Value is required", null));
       }
-      const metaTestCollection=(await clientPromise).db('muniquizNew').collection('meta_tests')
-      const _id=ObjectId.createFromHexString(testId)
-      const findMetaTestCollection=await metaTestCollection.findOne({_id})
-      if(!findMetaTestCollection)return res.sendStatus(204);
-      await metaTestCollection.updateOne({_id},{ $set: { [prop]: value } })
-      res.status(200).json(createResponse(true, "Updated successfully", null))
-    }catch (err) {
+      const metaTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("meta_tests");
+      const _id = ObjectId.createFromHexString(testId);
+      const findMetaTestCollection = await metaTestCollection.findOne({ _id });
+      if (!findMetaTestCollection) return res.sendStatus(204);
+      await metaTestCollection.updateOne({ _id }, { $set: { [prop]: value } });
+      res.status(200).json(createResponse(true, "Updated successfully", null));
+    } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  }
-)
+  },
+);
 export default router;

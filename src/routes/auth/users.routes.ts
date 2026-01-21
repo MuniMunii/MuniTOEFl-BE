@@ -3,8 +3,16 @@ import type { Request, Response } from "express";
 import { createResponse } from "../../utils/createResponse.js";
 import { cloudinary } from "../../config/cloudinary.js";
 import { upload } from "../../middleware/uploadMulter.js";
+import { sessionMiddleware } from "../../middleware/sessionMiddleware.js";
+import { requireAuth } from "../../middleware/protectedApi.js";
 const router = Express.Router();
-router.post("/change-image",upload.single("image"),async (req: Request, res: Response) => {
+// debugging
+// router.get('/test-user-props',sessionMiddleware,
+//   requireAuth,async (req:Request,res:Response)=>{
+//   try{console.log(req.user)}catch(err){console.log('error get testprops')}
+// })
+router.post("/change-image",  sessionMiddleware,
+  requireAuth,upload.single("image"),async (req: Request, res: Response) => {
     try {
       const file = req.file;
       if (!file) {
