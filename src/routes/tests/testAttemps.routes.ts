@@ -8,7 +8,7 @@ import { ObjectId } from "mongodb";
 import {
   type answerTestAttemptType,
   type TestAttemptType,
-} from "../../model/testAttempt.js";
+} from "../../model/testAttemptScheme.js";
 import parseDurationToMs from "../../utils/parseTimeDateToMs.js";
 const router = Express.Router();
 router.get(
