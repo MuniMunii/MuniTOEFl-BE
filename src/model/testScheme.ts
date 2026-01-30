@@ -48,6 +48,8 @@ export const ALLOWED_META_PROPS = [
   "description",
   "time",
   "isFree",
+  "createdAt",
+  "publishedAt"
 ] as const;
 export const metaTestDataScheme=z.object({
     type:z.enum(['listening','reading','speaking','writing'],'type does not exist'),
@@ -56,7 +58,9 @@ export const metaTestDataScheme=z.object({
     description:z.string().min(8,'Must be atleast 8 characters').max(300,'No more than 300 characters'),
     isFree:z.boolean(),
     time:z.enum(['30m','60m','120m','180m']),
-    published:z.boolean()
+    published:z.boolean(),
+    createdAt:z.date(),
+    publishedAt:z.date().optional(),
 })
 export const questionScheme=z.object({
     testId:z.instanceof(ObjectId),//Ref from meta test

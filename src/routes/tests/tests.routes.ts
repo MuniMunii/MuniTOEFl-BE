@@ -24,11 +24,13 @@ router.post(
   async (req: Request, res: Response) => {
     const session = (await clientPromise).startSession();
     try {
+      const now=new Date()
       const parsed = metaTestDataScheme.safeParse({
         ...req.body,
         titleSlug: slugify(req.body.title),
         published: false,
         time: "120m",
+        createdAt:now
       });
       if (!parsed.success) {
         return res
@@ -466,8 +468,17 @@ router.patch(
       const _id = ObjectId.createFromHexString(testId);
       const findMetaTestCollection = await metaTestCollection.findOne({ _id });
       if (!findMetaTestCollection) return res.sendStatus(204);
-      await metaTestCollection.updateOne({ _id }, { $set: { [prop]: value } });
-      res.status(200).json(createResponse(true, "Updated successfully", null));
+        await metaTestCollection.updateOne(
+          { _id },
+          prop === "published"
+            ? {
+                $set: value
+                  ? { published: true, publishedAt: new Date() }
+                  : { published: false },
+                $unset: value ? {} : { publishedAt: "" },
+              }
+            : { $set: { [prop]: value } }
+        );      res.status(200).json(createResponse(true, "Updated successfully", null));
     } catch (err) {
       return res
         .status(500)
@@ -475,4 +486,25 @@ router.patch(
     }
   },
 );
+router.get('/get-published-lesson/:type=?page',async (req:Request,res:Response)=>{
+  try{
+    const {type}=req.params
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const PAGE_SIZE = 6;
+    const skip = (page - 1) * PAGE_SIZE;
+    const metaTestDataCollection=(await clientPromise).db('muniquizNew').collection('meta_tests')
+    const [items,total]=await Promise.all(
+      [
+      metaTestDataCollection.find({published:true,type},{sort:{createdAt:-1},skip:skip,limit:PAGE_SIZE}).toArray(),
+      metaTestDataCollection.countDocuments({published:true,type})
+    ])
+    if(!items)return res.status(204)
+      res.status(200).json(createResponse(true,'Successfully fetch lesson',items,false,{pageSize:PAGE_SIZE,total}))
+  }
+  catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+})
 export default router;

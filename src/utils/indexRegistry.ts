@@ -17,6 +17,7 @@ export const indexRegistry: CollectionIndexes[] = [
         keys: { type: 1, titleSlug: 1 },
         options: { unique: true },
       },
+      {keys:{published:1,type:1,createdAt:-1}}
     ],
   },
   {
