@@ -15,7 +15,7 @@ export function activatedVoucherFromParam() {
           .status(400)
           .json(createResponse(false, "Voucher type doesn't exist"));
       }
-      const isTestFree=await db.collection('meta_test').findOne({_id:ObjectId.createFromHexString(testId),isFree:true})
+      const isTestFree=await db.collection('meta_tests').findOne({_id:ObjectId.createFromHexString(testId),isFree:true})
       if(isTestFree){
         return next()
       }
@@ -27,7 +27,8 @@ export function activatedVoucherFromParam() {
       const activatedVoucher = db.collection("activated_vouchers");
       const voucher = await activatedVoucher.findOne({
         typeV: type,
-        usedBy: ObjectId.createFromHexString(req.user.id)});
+        usedBy: ObjectId.createFromHexString(req.user.id),
+      expiresAt: { $gt: new Date() }});
       if (!voucher) {
         return res
           .status(403)

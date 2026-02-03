@@ -28,6 +28,17 @@ export const indexRegistry: CollectionIndexes[] = [
         options:{unique:true}
       }
     ]
+  },
+  {
+    collection:"attempt_tests",
+    indexes:[
+      {
+        keys:{testId:1,userId:1},
+        options:{unique:true,partialFilterExpression:{
+          status:'in_progress'
+        }}
+      }
+    ]
   }
 /**
  * @Example

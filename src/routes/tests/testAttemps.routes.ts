@@ -10,6 +10,7 @@ import {
   type TestAttemptType,
 } from "../../model/testAttemptScheme.js";
 import parseDurationToMs from "../../utils/parseTimeDateToMs.js";
+import { requireTestAccess } from "../../middleware/requireTestAccess.js";
 const router = Express.Router();
 router.get(
   "/get-all-question/:type/:testId",
@@ -57,9 +58,10 @@ router.get(
   },
 );
 router.post(
-  "/create-attempt-test/:testId",
+  "/create-attempt-test/:type/:testId",
   sessionMiddleware,
   requireAuth,
+  requireTestAccess(),
   async (req: Request, res: Response) => {
     try {
       const { testId } = req.params;
@@ -121,6 +123,7 @@ router.patch(
   "/answer-question/:testId",
   sessionMiddleware,
   requireAuth,
+  requireTestAccess(),
   async (req: Request, res: Response) => {
     try {
       const { testId } = req.params;

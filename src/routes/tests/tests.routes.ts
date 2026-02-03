@@ -486,7 +486,7 @@ router.patch(
     }
   },
 );
-router.get('/get-published-lesson/:type=?page',async (req:Request,res:Response)=>{
+router.get('/get-published-lesson/:type',async (req:Request,res:Response)=>{
   try{
     const {type}=req.params
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -499,7 +499,7 @@ router.get('/get-published-lesson/:type=?page',async (req:Request,res:Response)=
       metaTestDataCollection.countDocuments({published:true,type})
     ])
     if(!items)return res.status(204)
-      res.status(200).json(createResponse(true,'Successfully fetch lesson',items,false,{pageSize:PAGE_SIZE,total}))
+      res.status(200).json(createResponse(true,'Successfully fetch lesson',items,false,{page:PAGE_SIZE,total}))
   }
   catch (err) {
       return res

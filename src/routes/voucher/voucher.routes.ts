@@ -8,6 +8,7 @@ import { sessionMiddleware } from "../../middleware/sessionMiddleware.js";
 import { requireRoleAdmin } from "../../middleware/adminOnly.js";
 import type { ActivatedVoucherType } from "../../model/voucherScheme.js";
 import { ObjectId } from "mongodb";
+import { activatedVoucherFromParam } from "../../middleware/activatedVoucher.js";
 const router = Express.Router();
 router.post(
   "/add-voucher",
@@ -126,7 +127,7 @@ router.post(
       await voucher.updateOne({ id }, { $set: { used: true } });
       const activateVoucher = (await clientPromise)
         .db("muniquizNew")
-        .collection("activated_voucher");
+        .collection("activated_vouchers");
       const months = Number(findVoucher.duration);
       const expiredAt = new Date();
       expiredAt.setMonth(expiredAt.getMonth() + months);
@@ -164,7 +165,7 @@ router.get(
       const { id } = req.user;
       const activatedVoucher = (await clientPromise)
         .db("muniquizNew")
-        .collection("activated_voucher");
+        .collection("activated_vouchers");
       const findActivatedVoucherByUser =await activatedVoucher
         .find({ usedBy: ObjectId.createFromHexString(id) })
         .toArray();
@@ -192,22 +193,34 @@ router.get(
     }
   }
 );
-router.get('/get-active-voucher-test',sessionMiddleware,requireAuth,async (req:Request,res:Response)=>{
+// router.get('/get-active-voucher-test',sessionMiddleware,requireAuth,async (req:Request,res:Response)=>{
+//   try{
+//   const {name}=req.user
+//   const dateNow=new Date()
+//   const activeVouchers=(await clientPromise).db('muniquizNew').collection("activated_vouchers")
+//   const metaTest=(await clientPromise).db('muniquizNew').collection("meta_tests")
+//   const getActivatedVoucherByUser=await activeVouchers.find({usedBy:name,expiredAt:{$gt:dateNow}}).toArray()
+//   // ambil types yang udah di activasi sama user dengan mapping typeV
+//   const unlockedTypes=new Set(getActivatedVoucherByUser.map(v=>v.typeV))
+//   // return data yang test free dan type yang sudah di unlock sama user dengan di compare sama set di atas
+//   const getTest=await metaTest.find({$or:[
+//     {free:true},
+//     {type:{$in:unlockedTypes}}
+//   ]}).toArray()
+//   return res.json(createResponse(true,'Successfully fetch',getTest,false,))
+// }catch(err){
+//       res
+//         .status(500)
+//         .json(createResponse(false, "Internal server error", null));
+//     }
+// })
+
+// for loader endpoint to check if user has activated voucher for better UX (not security only for validation)
+router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam,async(req:Request,res:Response)=>{
   try{
-  const {name}=req.user
-  const dateNow=new Date()
-  const activeVouchers=(await clientPromise).db('muniquizNew').collection("activated_vouchers")
-  const metaTest=(await clientPromise).db('muniquizNew').collection("meta_tests")
-  const getActivatedVoucherByUser=await activeVouchers.find({usedBy:name,expiredAt:{$gt:dateNow}}).toArray()
-  // ambil types yang udah di activasi sama user dengan mapping typeV
-  const unlockedTypes=new Set(getActivatedVoucherByUser.map(v=>v.typeV))
-  // return data yang test free dan type yang sudah di unlock sama user dengan di compare sama set di atas
-  const getTest=await metaTest.find({$or:[
-    {free:true},
-    {type:{$in:unlockedTypes}}
-  ]}).toArray()
-  return res.json(createResponse(true,'Successfully fetch',getTest,false,))
-}catch(err){
+    res.status(200).json(createResponse(true,'success'))
+  }
+  catch(err){
       res
         .status(500)
         .json(createResponse(false, "Internal server error", null));
