@@ -6,18 +6,21 @@ import type{ metaTestDataType } from "../model/testScheme.js"
 export function requireTestAccess() {
   return async (req:Request, res:Response, next:NextFunction) => {
     const { testId } = req.params
+    if(!testId||!ObjectId.isValid(testId)){
+      return res.status(403).end()
+    }
     const db = (await clientPromise).db("muniquizNew")
-    const test = await db.collection("meta_tests").findOne<metaTestDataType>({ _id: new ObjectId(testId) })
+    const test = await db.collection("meta_tests").findOne<metaTestDataType>({ _id: ObjectId.createFromHexString(testId) })
     if (!test) return res.status(404).end()
     if (test.isFree) return next()
+      console.log(test)
     const hasVoucher = await db.collection("activated_vouchers").findOne({
-      usedBy: new ObjectId(req.user.id),
+      usedBy: ObjectId.createFromHexString(req.user.id),
       typeV: test.type,
-      active: true,
-      expiresAt: { $gt: new Date() },
+      expiredAt: { $gt: new Date() },
     })
+    console.log(hasVoucher)
     if (!hasVoucher) return res.status(403).end()
-
     next()
   }
 }

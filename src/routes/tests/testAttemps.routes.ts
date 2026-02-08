@@ -76,7 +76,7 @@ router.post(
       const metaTestCollection = db.collection("meta_tests");
       const attemptTestsCollection = db.collection("attempt-tests");
       const metaTest = await metaTestCollection.findOne({
-        testId: ObjectId.createFromHexString(testId),
+        _id: ObjectId.createFromHexString(testId),
       });
       if (!metaTest) {
         return res
@@ -138,7 +138,7 @@ router.patch(
       }
       const db = (await clientPromise).db("muniquizNew");
       const attemptTestsCollection =
-        db.collection<TestAttemptType>("attempt-tests");
+        db.collection<TestAttemptType>("attempt_tests");
       await attemptTestsCollection.updateOne(
         {
           testId: ObjectId.createFromHexString(testId),

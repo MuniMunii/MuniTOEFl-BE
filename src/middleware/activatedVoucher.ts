@@ -25,14 +25,15 @@ export function activatedVoucherFromParam() {
           .json(createResponse(false, "Voucher type doesn't exist"));
       }
       const activatedVoucher = db.collection("activated_vouchers");
+      console.log(ObjectId.createFromHexString(req.user.id),type)
       const voucher = await activatedVoucher.findOne({
         typeV: type,
         usedBy: ObjectId.createFromHexString(req.user.id),
-      expiresAt: { $gt: new Date() }});
+      expiredAt: { $gt: new Date() }});
       if (!voucher) {
         return res
           .status(403)
-          .json(createResponse(false, "Voucher invalid", null, "VoucherInvalid"));
+          .json(createResponse(false, "Voucher invalid/Expired", null, "Voucher Invalid/Expired"));
       }
       next();
     } catch {

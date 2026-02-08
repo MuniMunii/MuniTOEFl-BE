@@ -215,8 +215,8 @@ router.get(
 //     }
 // })
 
-// for loader endpoint to check if user has activated voucher for better UX (not security only for validation)
-router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam,async(req:Request,res:Response)=>{
+// for loader endpoint to check if user has activated voucher for better UX (not for security, only for validation)
+router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam(),async(req:Request,res:Response)=>{
   try{
     res.status(200).json(createResponse(true,'success'))
   }
