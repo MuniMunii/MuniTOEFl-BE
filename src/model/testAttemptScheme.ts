@@ -2,7 +2,8 @@ import { ObjectId } from 'mongodb'
 import {z} from 'zod'
 export const answersTestAttemptSchema=z.object({
         questionId:z.string(), // referencing _id from questions-test
-        choiceId:z.string()
+        choiceId:z.string(),
+        saved:z.boolean(),
     }).strict()
 /**
  * @abstract truth source 

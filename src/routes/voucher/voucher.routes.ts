@@ -215,7 +215,7 @@ router.get(
 //     }
 // })
 
-// for loader endpoint and check user test session
+// for loader endpoint and check user test session and its only for UX
 router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam(),async(req:Request,res:Response)=>{
   try{
     const {testId}=req.params

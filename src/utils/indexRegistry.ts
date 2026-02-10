@@ -37,7 +37,8 @@ export const indexRegistry: CollectionIndexes[] = [
         options:{unique:true,partialFilterExpression:{
           status:'in_progress'
         }}
-      }
+      },
+      {keys:{testId:1,userId:1,status:1,expiresAt:1}}
     ]
   }
 /**

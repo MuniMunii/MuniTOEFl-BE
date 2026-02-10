@@ -75,7 +75,8 @@ router.post(
       const now = new Date();
       const db = (await clientPromise).db("muniquizNew");
       const metaTestCollection = db.collection("meta_tests");
-      const attemptTestsCollection = db.collection<TestAttemptType>("attempt_tests");
+      const attemptTestsCollection =
+        db.collection<TestAttemptType>("attempt_tests");
       const metaTest = await metaTestCollection.findOne({
         _id: ObjectId.createFromHexString(testId),
       });
@@ -92,7 +93,7 @@ router.post(
           );
       }
       const durationMs = parseDurationToMs(metaTest.time);
-      const AttemptTestData:TestAttemptType = {
+      const AttemptTestData: TestAttemptType = {
         status: "in_progress",
         userId: ObjectId.createFromHexString(id),
         testId: metaTest._id,
@@ -100,24 +101,45 @@ router.post(
         startedAt: now,
         answers: [],
       };
-      const existingAttempt = await attemptTestsCollection.findOneAndUpdate({
-        userId: ObjectId.createFromHexString(id),
-        testId: metaTest._id,
-        status: "in_progress",
-        expiresAt: { $gt: new Date() },
-      },{
-        $setOnInsert:AttemptTestData
-      },
-    {
-      upsert:true,
-      returnDocument:'before'
-    });
+      // First check if the user has duplicate in_progress and has expires time it will change status
+      await attemptTestsCollection.updateMany(
+        {
+          userId: ObjectId.createFromHexString(id),
+          testId: metaTest._id,
+          status: "in_progress",
+          expiresAt: { $lte: now },
+        },
+        {
+          $set: { status: "expired", expiredAt: now },
+        },
+      );
+      // this const for searching if user already has session if it has it will continue if not it will create document
+      const existingAttempt = await attemptTestsCollection.findOneAndUpdate(
+        {
+          userId: ObjectId.createFromHexString(id),
+          testId: metaTest._id,
+          status: "in_progress",
+          expiresAt: { $gt: now },
+        },
+        {
+          $setOnInsert: AttemptTestData,
+        },
+        {
+          upsert: true,
+          returnDocument: "before",
+        },
+      );
+      console.log(existingAttempt)
       if (!existingAttempt) {
-              return res.status(201).json(createResponse(true, "Successfully created", null));
+        return res
+          .status(201)
+          .json(createResponse(true, "Successfully created", null));
       }
-           res
-          .status(200)
-          .json(createResponse(false, "Attempt already in progress",existingAttempt));
+      res
+        .status(200)
+        .json(
+          createResponse(false, "Attempt already in progress", existingAttempt),
+        );
     } catch (err) {
       return res
         .status(500)
@@ -138,25 +160,69 @@ router.patch(
           .status(400)
           .json(createResponse(false, "Voucher type doesn't exist"));
       }
-      const { questionId, choiceId } = req.body;
+      const { questionId, choiceId, saved } = req.body;
+      const now=new Date()
       if (!questionId || !choiceId) {
         return res.status(400).json(createResponse(false, "Invalid payload"));
       }
       const db = (await clientPromise).db("muniquizNew");
       const attemptTestsCollection =
         db.collection<TestAttemptType>("attempt_tests");
-      await attemptTestsCollection.updateOne(
+      // Return false if test is expired
+      const expiredRes = await attemptTestsCollection.findOneAndUpdate(
         {
           testId: ObjectId.createFromHexString(testId),
           userId: ObjectId.createFromHexString(req.user.id),
           status: "in_progress",
-          expiresAt: { $gt: new Date() },
+          expiresAt: { $lte: now },
         },
         {
-          $pull: { answers: { questionId } },
-          $push: { answers: { questionId, choiceId } },
+          $set: { status: "expired", expiredAt: now },
+        },
+        { returnDocument: "after"
+          // ,includeResultMetadata:true 
         },
       );
+      // console.log(expiredRes.value)
+      if (expiredRes) {
+        return res
+          .status(403)
+          .json(createResponse(false, "Session Expired", null));
+      }
+      const result = await attemptTestsCollection.updateOne(
+        {
+          testId: ObjectId.createFromHexString(testId),
+          userId: ObjectId.createFromHexString(req.user.id),
+          status: "in_progress",
+          expiresAt: { $gt: now },
+          "answers.questionId": questionId,
+        },
+        {
+          $set: {
+            "answers.$.choiceId": choiceId,
+            "answers.$.saved": saved,
+          },
+        },
+      );
+      if (result.matchedCount === 0) {
+        await attemptTestsCollection.updateOne(
+          {
+            testId: ObjectId.createFromHexString(testId),
+            userId: ObjectId.createFromHexString(req.user.id),
+            status: "in_progress",
+            expiresAt: { $gt: now },
+          },
+          {
+            $push: {
+              answers: {
+                questionId,
+                choiceId,
+                saved,
+              },
+            },
+          },
+        );
+      }
       return res.status(200).json(createResponse(true, "Answer saved"));
     } catch (err) {
       return res
