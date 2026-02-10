@@ -15,6 +15,7 @@ import {
 } from "../../model/testScheme.js";
 import { slugify } from "../../utils/slugify.js";
 import { ObjectId } from "mongodb";
+import { nanoid } from "nanoid";
 const router = Express.Router();
 router.post(
   "/create-test",
@@ -66,8 +67,8 @@ router.post(
         qTitle: "Question Title",
         qDescription: EMPTY_DESCRIPTION_STATE,
         choices: [
-          { cTitle: "Title choices 1", correctAnswer: true },
-          { cTitle: "Title choices 2", correctAnswer: false },
+          { cTitle: "Title choices 1", correctAnswer: true,choiceId:nanoid(10) },
+          { cTitle: "Title choices 2", correctAnswer: false,choiceId:nanoid(10)},
         ],
       };
       await questions.insertOne(questionData, { session });
@@ -306,8 +307,8 @@ router.post(
         qTitle: "Question Title",
         qDescription: EMPTY_DESCRIPTION_STATE,
         choices: [
-          { cTitle: "Title choices 1", correctAnswer: true },
-          { cTitle: "Title choices 2", correctAnswer: false },
+          { cTitle: "Title choices 1", correctAnswer: true,choiceId:nanoid(10)},
+          { cTitle: "Title choices 2", correctAnswer: false,choiceId:nanoid(10)},
         ],
       };
       await questionsTestCollection.insertOne(questionData);

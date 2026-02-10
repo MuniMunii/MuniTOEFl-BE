@@ -13,13 +13,13 @@ export function requireTestAccess() {
     const test = await db.collection("meta_tests").findOne<metaTestDataType>({ _id: ObjectId.createFromHexString(testId) })
     if (!test) return res.status(404).end()
     if (test.isFree) return next()
-      console.log(test)
+      // console.log(test)
     const hasVoucher = await db.collection("activated_vouchers").findOne({
       usedBy: ObjectId.createFromHexString(req.user.id),
       typeV: test.type,
       expiredAt: { $gt: new Date() },
     })
-    console.log(hasVoucher)
+    // console.log(hasVoucher)
     if (!hasVoucher) return res.status(403).end()
     next()
   }

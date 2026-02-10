@@ -12,6 +12,7 @@ import {
 import parseDurationToMs from "../../utils/parseTimeDateToMs.js";
 import { requireTestAccess } from "../../middleware/requireTestAccess.js";
 const router = Express.Router();
+// router.get('/test-session/')
 router.get(
   "/get-all-question/:type/:testId",
   sessionMiddleware,
@@ -74,7 +75,7 @@ router.post(
       const now = new Date();
       const db = (await clientPromise).db("muniquizNew");
       const metaTestCollection = db.collection("meta_tests");
-      const attemptTestsCollection = db.collection("attempt-tests");
+      const attemptTestsCollection = db.collection<TestAttemptType>("attempt_tests");
       const metaTest = await metaTestCollection.findOne({
         _id: ObjectId.createFromHexString(testId),
       });
@@ -91,7 +92,7 @@ router.post(
           );
       }
       const durationMs = parseDurationToMs(metaTest.time);
-      const AttemptTestData = {
+      const AttemptTestData:TestAttemptType = {
         status: "in_progress",
         userId: ObjectId.createFromHexString(id),
         testId: metaTest._id,
@@ -99,19 +100,24 @@ router.post(
         startedAt: now,
         answers: [],
       };
-      const existing = await attemptTestsCollection.findOne({
+      const existingAttempt = await attemptTestsCollection.findOneAndUpdate({
         userId: ObjectId.createFromHexString(id),
         testId: metaTest._id,
         status: "in_progress",
         expiresAt: { $gt: new Date() },
-      });
-      if (existing) {
-        return res
-          .status(409)
-          .json(createResponse(false, "Attempt already in progress"));
+      },{
+        $setOnInsert:AttemptTestData
+      },
+    {
+      upsert:true,
+      returnDocument:'before'
+    });
+      if (!existingAttempt) {
+              return res.status(201).json(createResponse(true, "Successfully created", null));
       }
-      await attemptTestsCollection.insertOne(AttemptTestData);
-      res.status(201).json(createResponse(true, "Successfully created", null));
+           res
+          .status(200)
+          .json(createResponse(false, "Attempt already in progress",existingAttempt));
     } catch (err) {
       return res
         .status(500)

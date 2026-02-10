@@ -215,10 +215,20 @@ router.get(
 //     }
 // })
 
-// for loader endpoint to check if user has activated voucher for better UX (not for security, only for validation)
+// for loader endpoint and check user test session
 router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam(),async(req:Request,res:Response)=>{
   try{
-    res.status(200).json(createResponse(true,'success'))
+    const {testId}=req.params
+    if(!testId||!ObjectId.isValid(testId)){
+      return res.status(403).json(createResponse(false,'test id not found'))
+    }
+    const attemptTestsCollection=(await clientPromise).db('muniquizNew').collection('attempt_tests');
+    const findTestSession=await attemptTestsCollection.findOne({
+      testId:ObjectId.createFromHexString(testId),
+      userId:ObjectId.createFromHexString(req.user.id),
+      expiresAt:{$gt:new Date()}
+    })
+    res.status(200).json(createResponse(true,'success',findTestSession?findTestSession:'no session'))
   }
   catch(err){
       res

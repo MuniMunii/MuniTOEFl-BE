@@ -69,7 +69,8 @@ export const questionScheme=z.object({
     qDescription:ContentDesc,
     choices:z.array(z.object({
         cTitle:z.string(),
-        correctAnswer:z.boolean()
+        choiceId:z.string(),
+        correctAnswer:z.boolean(),
     })).min(2,'Must contain atleast 2 elements').max(5,'5 is max elements')
 })
 export type metaTestDataType=z.infer<typeof metaTestDataScheme>
