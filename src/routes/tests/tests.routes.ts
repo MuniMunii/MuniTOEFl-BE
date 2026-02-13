@@ -11,7 +11,7 @@ import {
   type AllowedMetaProp,
   type Content,
   type metaTestDataType,
-  type questionType,
+  type QuestionType,
 } from "../../model/testScheme.js";
 import { slugify } from "../../utils/slugify.js";
 import { ObjectId } from "mongodb";
@@ -61,7 +61,7 @@ router.post(
       };
       session.startTransaction();
       const metaTestRes = await metaTests.insertOne(parsed.data, { session });
-      const questionData: questionType = {
+      const questionData: QuestionType = {
         testId: metaTestRes.insertedId,
         order: 1,
         qTitle: "Question Title",
@@ -301,7 +301,7 @@ router.post(
         { sort: { order: -1 } },
       );
       const nextOrder = lastQuestion ? lastQuestion.order + 1 : 1;
-      const questionData: questionType = {
+      const questionData: QuestionType = {
         testId: findMetaTest._id,
         order: nextOrder,
         qTitle: "Question Title",
@@ -386,7 +386,7 @@ router.patch(
     try {
       const { testId } = req.params;
       const { questions } = req.body as {
-        questions: (questionType & { _id: string })[];
+        questions: (QuestionType & { _id: string })[];
       };
       if (!Array.isArray(questions) || !testId) {
         return res

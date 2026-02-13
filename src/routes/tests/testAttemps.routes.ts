@@ -11,6 +11,7 @@ import {
 } from "../../model/testAttemptScheme.js";
 import parseDurationToMs from "../../utils/parseTimeDateToMs.js";
 import { requireTestAccess } from "../../middleware/requireTestAccess.js";
+import type { QuestionType } from "../../model/testScheme.js";
 const router = Express.Router();
 // router.get('/test-session/')
 router.get(
@@ -129,7 +130,7 @@ router.post(
           returnDocument: "before",
         },
       );
-      console.log(existingAttempt)
+      console.log(existingAttempt);
       if (!existingAttempt) {
         return res
           .status(201)
@@ -140,6 +141,46 @@ router.post(
         .json(
           createResponse(false, "Attempt already in progress", existingAttempt),
         );
+    } catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  },
+);
+// first fetch for UI/UX saved answer
+router.get(
+  "/get-saved-answer-question/:testId",
+  sessionMiddleware,
+  requireAuth,
+  requireTestAccess(),
+  async (req: Request, res: Response) => {
+    try {
+      const { testId } = req.params;
+      if (!testId || !ObjectId.isValid(testId)) {
+        return res
+          .status(403)
+          .json(createResponse(false, "Test Id Invalid", null));
+      }
+      const AttemptTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("attempt_tests");
+      const now = new Date();
+      const findActiveSession = await AttemptTestCollection.findOne(
+        {
+          userId: ObjectId.createFromHexString(req.user.id),
+          testId: ObjectId.createFromHexString(testId),
+          status: "in_progress",
+          expiresAt: { $gt: now },
+        },
+        { projection: { testId: 1, status: 1, answers: 1, userId: 1 } },
+      );
+      if (!findActiveSession) {
+        return res.status(204);
+      }
+      res
+        .status(200)
+        .json(createResponse(true, "Fetch Success", findActiveSession));
     } catch (err) {
       return res
         .status(500)
@@ -161,7 +202,7 @@ router.patch(
           .json(createResponse(false, "Voucher type doesn't exist"));
       }
       const { questionId, choiceId, saved } = req.body;
-      const now=new Date()
+      const now = new Date();
       if (!questionId || !choiceId) {
         return res.status(400).json(createResponse(false, "Invalid payload"));
       }
@@ -179,12 +220,17 @@ router.patch(
         {
           $set: { status: "expired", expiredAt: now },
         },
-        { returnDocument: "after"
-          // ,includeResultMetadata:true 
-        },
+        { returnDocument: "after", includeResultMetadata: true },
       );
+      // double guard
+      const activeSession = await attemptTestsCollection.findOne({
+        testId: ObjectId.createFromHexString(testId),
+        userId: ObjectId.createFromHexString(req.user.id),
+        status: "in_progress",
+        expiresAt: { $gt: now },
+      });
       // console.log(expiredRes.value)
-      if (expiredRes) {
+      if (expiredRes.value?.status === "expired" || !activeSession) {
         return res
           .status(403)
           .json(createResponse(false, "Session Expired", null));
@@ -231,4 +277,113 @@ router.patch(
     }
   },
 );
+router.patch(
+  "/submit-test/:testId",
+  sessionMiddleware,
+  requireAuth,
+  requireTestAccess(),
+  async (req: Request, res: Response) => {
+    try {
+      const { testId } = req.params;
+      if (!testId || !ObjectId.isValid(testId)) {
+        return res
+          .status(403)
+          .json(createResponse(false, "Invalid test id", null));
+      }
+      const attemptTestCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection<TestAttemptType>("attempt_tests");
+      const now = new Date();
+      const findActiveAttemptTest = await attemptTestCollection.findOne({
+        userId: ObjectId.createFromHexString(req.user.id),
+        testId: ObjectId.createFromHexString(testId),
+        status: "in_progress",
+        expiresAt: { $gt: now },
+      });
+      if (!findActiveAttemptTest) {
+        return res
+          .status(404)
+          .json(createResponse(false, "Active session not found"));
+      }
+      const submitTest=await attemptTestCollection.findOneAndUpdate(
+        {
+          userId: ObjectId.createFromHexString(req.user.id),
+          testId: ObjectId.createFromHexString(testId),
+          status: "in_progress",
+          expiresAt: { $gt: now },
+        },
+        {
+          $set: {
+            status: "submitted",
+          },
+        },
+        {
+          includeResultMetadata:true,
+          returnDocument:"after",
+        }
+      );
+      // console.log(submitTest)
+      res.status(200).json(createResponse(true,'Test Submitted',submitTest.value))
+    } catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  },
+);
+router.get('/result/:attemptId',
+  sessionMiddleware,
+  requireAuth,
+  async (req:Request,res:Response)=>{
+    try{
+      const {attemptId}=req.params
+      if(!attemptId||!ObjectId.isValid(attemptId)){
+        return res.status(403).json(createResponse(false,'Attempt id not found'))
+      }
+      const db=(await clientPromise).db('muniquizNew')
+      const questionTestCollection=db.collection<QuestionType>('questions_test')
+      const attemptTestCollection=db.collection<TestAttemptType>('attempt_tests')
+      const findTest=await attemptTestCollection.findOne({
+        _id:ObjectId.createFromHexString(attemptId),
+        userId:ObjectId.createFromHexString(req.user.id),
+        status:"submitted"
+      })
+      if(!findTest){
+        return res.status(404).json(createResponse(false,'Test not found',null))
+      }
+      console.log(findTest)
+      const findAllQuestionTest=await questionTestCollection.find({testId:findTest.testId}).toArray()
+      const answerMap=new Map(
+        findTest.answers.map(a=>[a.questionId,a.choiceId])
+      )
+      const result=findAllQuestionTest.map(v=>{
+        const userChoiceId=answerMap.get(v._id.toString())
+        const correctAnswer=v.choices.find(c=>c.correctAnswer)
+        const userAnswer=v.choices.find(v=>v.choiceId===userChoiceId)
+        return {
+          qId:v._id,
+          qTitle:v.qTitle,
+          qDescription:v.qDescription,
+          userChoice:userAnswer?.cTitle,
+          isCorrect:userAnswer?.correctAnswer===true
+        }
+      })
+      res.status(200).json(createResponse(true,'Fetch Success',result))
+      // not OPtimal
+    //   const filterAnswer=findAllQuestionTest.map((v)=>{
+    //     const answer=findTest.answers.find(a=>a.choiceId===v._id.toString())
+    //     const userAnswer=v.choices.find(c=>c.choiceId===answer?.choiceId)
+    //     const correctChoice=v.choices.find(c=>c.correctAnswer)
+    //     return {
+    //       isCorrect:userAnswer?.correctAnswer===true
+    //     }
+    //   })
+    }
+    catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  }
+)
 export default router;

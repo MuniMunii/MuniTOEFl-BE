@@ -75,4 +75,4 @@ export const questionScheme=z.object({
 })
 export type metaTestDataType=z.infer<typeof metaTestDataScheme>
 export type AllowedMetaProp = typeof ALLOWED_META_PROPS[number];
-export type questionType=z.infer<typeof questionScheme>
+export type QuestionType=z.infer<typeof questionScheme>
