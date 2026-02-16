@@ -46,7 +46,7 @@ router.post(
   }
 );
 router.delete(
-  "/delete-voucher",
+  "/voucher",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -79,7 +79,7 @@ router.delete(
   }
 );
 router.get(
-  "/get-all-voucher",
+  "/all-voucher",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -157,7 +157,7 @@ router.post(
   }
 );
 router.get(
-  "/get-active-vouchers",
+  "/active-vouchers",
   sessionMiddleware,
   requireAuth,
   async (req: Request, res: Response) => {

@@ -15,7 +15,7 @@ import type { QuestionType } from "../../model/testScheme.js";
 const router = Express.Router();
 // router.get('/test-session/')
 router.get(
-  "/get-all-question/:type/:testId",
+  "/all-question/:type/:testId",
   sessionMiddleware,
   requireAuth,
   // type params for this middleware
@@ -150,7 +150,7 @@ router.post(
 );
 // first fetch for UI/UX saved answer
 router.get(
-  "/get-saved-answer-question/:testId",
+  "/saved-answer-question/:testId",
   sessionMiddleware,
   requireAuth,
   requireTestAccess(),

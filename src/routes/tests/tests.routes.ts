@@ -203,8 +203,8 @@ router.delete(
     }
   },
 );
-router.post(
-  "/get-question/admin/:testId",
+router.get(
+  "/question/admin/:testId",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -325,7 +325,7 @@ router.post(
   },
 );
 router.delete(
-  "/delete-question/:testId/:_id",
+  "/question/:testId/:_id",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -487,7 +487,7 @@ router.patch(
     }
   },
 );
-router.get('/get-published-lesson/:type',async (req:Request,res:Response)=>{
+router.get('/published-lesson/:type',async (req:Request,res:Response)=>{
   try{
     const {type}=req.params
     const page = Math.max(Number(req.query.page) || 1, 1);
