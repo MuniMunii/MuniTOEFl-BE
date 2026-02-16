@@ -11,7 +11,7 @@ import { ObjectId } from "mongodb";
 import { activatedVoucherFromParam } from "../../middleware/activatedVoucher.js";
 const router = Express.Router();
 router.post(
-  "/add-voucher",
+  "/vouchers",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -79,7 +79,7 @@ router.delete(
   }
 );
 router.get(
-  "/all-voucher",
+  "/all-vouchers",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
