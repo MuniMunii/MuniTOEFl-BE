@@ -11,7 +11,16 @@ import {
 } from "../../model/testAttemptScheme.js";
 import parseDurationToMs from "../../utils/parseTimeDateToMs.js";
 import { requireTestAccess } from "../../middleware/requireTestAccess.js";
-import type { QuestionType } from "../../model/testScheme.js";
+import {
+  type metaTestDataType,
+  type MetaTestDoc,
+  type QuestionType,
+} from "../../model/testScheme.js";
+import {
+  VALID_VOUCHER_TYPEV,
+  type VOUCHER_TYPEV,
+  type VoucherType,
+} from "../../model/voucherScheme.js";
 const router = Express.Router();
 // router.get('/test-session/')
 router.get(
@@ -305,7 +314,7 @@ router.patch(
           .status(404)
           .json(createResponse(false, "Active session not found"));
       }
-      const submitTest=await attemptTestCollection.findOneAndUpdate(
+      const submitTest = await attemptTestCollection.findOneAndUpdate(
         {
           userId: ObjectId.createFromHexString(req.user.id),
           testId: ObjectId.createFromHexString(testId),
@@ -315,15 +324,18 @@ router.patch(
         {
           $set: {
             status: "submitted",
+            submittedAt:now
           },
         },
         {
-          includeResultMetadata:true,
-          returnDocument:"after",
-        }
+          includeResultMetadata: true,
+          returnDocument: "after",
+        },
       );
       // console.log(submitTest)
-      res.status(200).json(createResponse(true,'Test Submitted',submitTest.value))
+      res
+        .status(200)
+        .json(createResponse(true, "Test Submitted", submitTest.value));
     } catch (err) {
       return res
         .status(500)
@@ -331,59 +343,133 @@ router.patch(
     }
   },
 );
-router.get('/result/:attemptId',
+router.get(
+  "/result/:attemptId",
   sessionMiddleware,
   requireAuth,
-  async (req:Request,res:Response)=>{
-    try{
-      const {attemptId}=req.params
-      if(!attemptId||!ObjectId.isValid(attemptId)){
-        return res.status(403).json(createResponse(false,'Attempt id not found'))
+  async (req: Request, res: Response) => {
+    try {
+      const { attemptId } = req.params;
+      if (!attemptId || !ObjectId.isValid(attemptId)) {
+        return res
+          .status(403)
+          .json(createResponse(false, "Attempt id not found"));
       }
-      const db=(await clientPromise).db('muniquizNew')
-      const questionTestCollection=db.collection<QuestionType>('questions_test')
-      const attemptTestCollection=db.collection<TestAttemptType>('attempt_tests')
-      const findTest=await attemptTestCollection.findOne({
-        _id:ObjectId.createFromHexString(attemptId),
-        userId:ObjectId.createFromHexString(req.user.id),
-        status:"submitted"
-      })
-      if(!findTest){
-        return res.status(404).json(createResponse(false,'Test not found',null))
+      const db = (await clientPromise).db("muniquizNew");
+      const questionTestCollection =
+        db.collection<QuestionType>("questions_test");
+      const attemptTestCollection =
+        db.collection<TestAttemptType>("attempt_tests");
+      const findTest = await attemptTestCollection.findOne({
+        _id: ObjectId.createFromHexString(attemptId),
+        userId: ObjectId.createFromHexString(req.user.id),
+        status: "submitted",
+      });
+      if (!findTest) {
+        return res
+          .status(404)
+          .json(createResponse(false, "Test not found", null));
       }
-      console.log(findTest)
-      const findAllQuestionTest=await questionTestCollection.find({testId:findTest.testId}).toArray()
-      const answerMap=new Map(
-        findTest.answers.map(a=>[a.questionId,a.choiceId])
-      )
-      const result=findAllQuestionTest.map(v=>{
-        const userChoiceId=answerMap.get(v._id.toString())
-        const correctAnswer=v.choices.find(c=>c.correctAnswer)
-        const userAnswer=v.choices.find(v=>v.choiceId===userChoiceId)
+      console.log(findTest);
+      const findAllQuestionTest = await questionTestCollection
+        .find({ testId: findTest.testId })
+        .toArray();
+      const answerMap = new Map(
+        findTest.answers.map((a) => [a.questionId, a.choiceId]),
+      );
+      const result = findAllQuestionTest.map((v) => {
+        const userChoiceId = answerMap.get(v._id.toString());
+        const correctAnswer = v.choices.find((c) => c.correctAnswer);
+        const userAnswer = v.choices.find((v) => v.choiceId === userChoiceId);
         return {
-          qId:v._id,
-          qTitle:v.qTitle,
-          qDescription:v.qDescription,
-          userChoice:userAnswer?.cTitle,
-          isCorrect:userAnswer?.correctAnswer===true
-        }
-      })
-      res.status(200).json(createResponse(true,'Fetch Success',result))
+          qId: v._id,
+          qTitle: v.qTitle,
+          qDescription: v.qDescription,
+          userChoice: userAnswer?.cTitle,
+          isCorrect: userAnswer?.correctAnswer === true,
+        };
+      });
+      res.status(200).json(createResponse(true, "Fetch Success", result));
       // not OPtimal
-    //   const filterAnswer=findAllQuestionTest.map((v)=>{
-    //     const answer=findTest.answers.find(a=>a.choiceId===v._id.toString())
-    //     const userAnswer=v.choices.find(c=>c.choiceId===answer?.choiceId)
-    //     const correctChoice=v.choices.find(c=>c.correctAnswer)
-    //     return {
-    //       isCorrect:userAnswer?.correctAnswer===true
-    //     }
-    //   })
-    }
-    catch (err) {
+      //   const filterAnswer=findAllQuestionTest.map((v)=>{
+      //     const answer=findTest.answers.find(a=>a.choiceId===v._id.toString())
+      //     const userAnswer=v.choices.find(c=>c.choiceId===answer?.choiceId)
+      //     const correctChoice=v.choices.find(c=>c.correctAnswer)
+      //     return {
+      //       isCorrect:userAnswer?.correctAnswer===true
+      //     }
+      //   })
+    } catch (err) {
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));
     }
-  }
-)
+  },
+);
+// Problem here this endpoint feel odd because the goal is filtering with type but type is unused here and alreayd filtering with _id
+// and missing pagination
+router.get(
+  "/results",
+  sessionMiddleware,
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const type = req.query.type as string | undefined;
+      const db = (await clientPromise).db("muniquizNew");
+      const attemptTestCollection =
+        db.collection<TestAttemptType>("attempt_tests");
+      const metaTestCollection = db.collection<MetaTestDoc>("meta_tests");
+      if (!type) {
+        return res.status(40).json(createResponse(false, "Type is required"));
+      }
+      console.log('selecting: ',type)
+      if (
+        type !== "all" &&
+        !VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)
+      ) {
+        return res.status(403).json(createResponse(false, "Invalid Payload"));
+      }
+      const attempts = await attemptTestCollection
+        .find({
+          userId: ObjectId.createFromHexString(req.user.id),
+        },{
+        projection:{
+          startedAt:1,
+          expiredAt:1,
+          expiresAt:1,
+          testId:1
+        }
+      })
+        .toArray();
+      if (!attempts || attempts.length === 0) {
+        return res.status(204);
+      }
+      const testIdSet = [...new Set(attempts.map((a) => a.testId.toHexString()))].map(id=>ObjectId.createFromHexString(id));
+      console.log('test ID Set:',testIdSet)
+      console.log('Attempt: ',attempts)
+      const meta = await metaTestCollection
+        .find(
+          {
+            _id: { $in: testIdSet },
+          },
+          {
+            projection: { 
+              _id: 1,
+              type: 1,
+              title: 1,
+            },
+          },
+        )
+        .toArray();
+        console.log(meta)
+      return res.status(200).json(
+        createResponse(true, "Successfully fetch", attempts, false, meta),
+      );
+    } catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  },
+);
 export default router;
