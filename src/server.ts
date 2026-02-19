@@ -4,8 +4,10 @@ import {toNodeHandler} from "better-auth/node"
 import cors from "cors"
 import { auth } from "./routes/auth/auth.routes.js";
 import VoucherRoutes from "./routes/voucher/voucher.routes.js"
+import AdminVoucherRoutes from "./routes/voucher/admin/voucher.routes.js"
 import UsersRoutes from "./routes/auth/users.routes.js"
 import TestRoutes from './routes/tests/tests.routes.js'
+import AdminTestRoutes from './routes/tests/admin/tests.routes.js'
 import TestAttempsRoutes from './routes/tests/testAttemps.routes.js'
 import { initIndexes } from "./utils/initIndex.js";
 import {rateLimit} from "express-rate-limit"
@@ -26,6 +28,12 @@ app.use(
   VoucherRoutes
 );
 app.use(
+  "/api/admin/voucher",
+  rateLimit({ windowMs: 1 * 60 * 1000, limit: 20,
+    message: "Too many requests, please try again later.", }),
+  AdminVoucherRoutes
+);
+app.use(
   "/api/user",
   rateLimit({ windowMs: 5 * 60 * 1000, limit: 50,
     message: "Too many requests, please try again later.", }),
@@ -39,6 +47,15 @@ app.use(
     message: "Too many requests, please try again later.",
   }),
   TestRoutes
+);
+app.use(
+  "/api/admin/test",
+  rateLimit({
+    windowMs: 1 * 60 * 1000,
+    limit: 100,
+    message: "Too many requests, please try again later.",
+  }),
+  AdminTestRoutes
 );
 app.use(
   "/api/test-attempt",

@@ -3,12 +3,14 @@ import { createResponse } from "../utils/createResponse.js";
 import clientPromise from "../config/mongo_client.js";
 import { VALID_VOUCHER_TYPEV, type VOUCHER_TYPEV } from "../model/voucherScheme.js";
 import { ObjectId } from "mongodb";
-
+/**
+ * @returns find active voucher from user if free ignored
+ */
 export function activatedVoucherFromParam() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
     const db = (await clientPromise).db("muniquizNew");
-      const type = req.params.type as VOUCHER_TYPEV;
+      const type = req.query.type as VOUCHER_TYPEV;
       const {testId}=req.params
       if(!testId || !ObjectId.isValid(testId)){
         return res
@@ -25,7 +27,7 @@ export function activatedVoucherFromParam() {
           .json(createResponse(false, "Voucher type doesn't exist"));
       }
       const activatedVoucher = db.collection("activated_vouchers");
-      console.log(ObjectId.createFromHexString(req.user.id),type)
+      // console.log(ObjectId.createFromHexString(req.user.id),type)
       const voucher = await activatedVoucher.findOne({
         typeV: type,
         usedBy: ObjectId.createFromHexString(req.user.id),

@@ -22,12 +22,26 @@ import {
   type VoucherType,
 } from "../../model/voucherScheme.js";
 const router = Express.Router();
-// router.get('/test-session/')
+/**
+ * @query {type}
+ * - type:
+ *   Allowed: "reading" | "listening" | "writing" | "speaking"
+ *   FilterPurpose: for middleware activatedVoucherFromParam
+ * 
+ * @Param :testId
+ * - testId: 
+ *     reference: testId from questions_test
+ * 
+ * Purpose:
+ *  - get all question from collections questions_test
+ * 
+ * Required Auth
+ * Required active voucher if pay content, ignored if free
+ */
 router.get(
-  "/all-question/:type/:testId",
+  "/test/:testId/questions",
   sessionMiddleware,
   requireAuth,
-  // type params for this middleware
   activatedVoucherFromParam(),
   async (req: Request, res: Response) => {
     try {
@@ -68,8 +82,20 @@ router.get(
     }
   },
 );
+/**
+ * @Param :testId
+ * - testId: 
+ *     reference: testId from meta_tests
+ * 
+ * Purpose:
+ *  - Create first attempt test for saving answers etc
+ *  - Simple description is like giving paper to you when doing exams
+ * 
+ * Required Auth
+ * Required active voucher if pay content, ignored if free
+ */
 router.post(
-  "/create-attempt-test/:type/:testId",
+  "/test/:testId/attempts",
   sessionMiddleware,
   requireAuth,
   requireTestAccess(),
@@ -157,9 +183,19 @@ router.post(
     }
   },
 );
-// first fetch for UI/UX saved answer
+/**
+ * @Param :testId
+ * - testId: 
+ *     reference: testId from collection attempt_tests
+ * 
+ * Purpose:
+ *  - Get saved answer/session and give to Frontend for button,etc
+ * 
+ * Required Auth
+ * Required active voucher if pay content, ignored if free
+ */
 router.get(
-  "/saved-answer-question/:testId",
+  "/tests/:testId/active-session",
   sessionMiddleware,
   requireAuth,
   requireTestAccess(),
@@ -197,6 +233,14 @@ router.get(
     }
   },
 );
+/**
+ * @Param :testId
+ * - testId: 
+ *     reference: testId from collection attempt_tests
+ * 
+ * Required Auth
+ * Required active voucher if pay content, ignored if free
+ */
 router.patch(
   "/answer-question/:testId",
   sessionMiddleware,
@@ -286,8 +330,17 @@ router.patch(
     }
   },
 );
-router.patch(
-  "/submit-test/:testId",
+
+/**
+ * @Param :testId
+ * - testId: 
+ *     reference: testId from collection attempt-tests
+ * 
+ * Required Auth
+ * Required active voucher if pay content, ignored if free
+ */
+router.post(
+  "/test/:testId/submit",
   sessionMiddleware,
   requireAuth,
   requireTestAccess(),
@@ -324,7 +377,7 @@ router.patch(
         {
           $set: {
             status: "submitted",
-            submittedAt:now
+            submittedAt: now,
           },
         },
         {
@@ -343,8 +396,15 @@ router.patch(
     }
   },
 );
+/**
+ * @Param :attemptId
+ * - attemptId: 
+ *     reference: _id from collection attempt_tests
+ * 
+ * Required Auth
+ */
 router.get(
-  "/result/:attemptId",
+  "/results/:attemptId",
   sessionMiddleware,
   requireAuth,
   async (req: Request, res: Response) => {
@@ -379,7 +439,8 @@ router.get(
       );
       const result = findAllQuestionTest.map((v) => {
         const userChoiceId = answerMap.get(v._id.toString());
-        const correctAnswer = v.choices.find((c) => c.correctAnswer);
+        // still considering if we should show answer / not
+        // const correctAnswer = v.choices.find((c) => c.correctAnswer);
         const userAnswer = v.choices.find((v) => v.choiceId === userChoiceId);
         return {
           qId: v._id,
@@ -390,15 +451,6 @@ router.get(
         };
       });
       res.status(200).json(createResponse(true, "Fetch Success", result));
-      // not OPtimal
-      //   const filterAnswer=findAllQuestionTest.map((v)=>{
-      //     const answer=findTest.answers.find(a=>a.choiceId===v._id.toString())
-      //     const userAnswer=v.choices.find(c=>c.choiceId===answer?.choiceId)
-      //     const correctChoice=v.choices.find(c=>c.correctAnswer)
-      //     return {
-      //       isCorrect:userAnswer?.correctAnswer===true
-      //     }
-      //   })
     } catch (err) {
       return res
         .status(500)
@@ -406,8 +458,18 @@ router.get(
     }
   },
 );
-// Problem here this endpoint feel odd because the goal is filtering with type but type is unused here and alreayd filtering with _id
-// and missing pagination
+/**
+ * @query ?type=:type&page=:page
+ * - types (string|optional): 
+ *     Allowed: "reading" | "listening" | "writing" | "speaking" | "all" or <VOUCHER_TYPEV,{"all"}
+ *     Default: "all"
+ * 
+ * Pagination
+ * - Page (number|optional):
+ *     Default: "1"
+ * 
+ * Required Auth
+ */
 router.get(
   "/results",
   sessionMiddleware,
@@ -415,6 +477,9 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const type = req.query.type as string | undefined;
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const PAGE_SIZE = 6;
+      const skip = (page - 1) * PAGE_SIZE;
       const db = (await clientPromise).db("muniquizNew");
       const attemptTestCollection =
         db.collection<TestAttemptType>("attempt_tests");
@@ -422,48 +487,57 @@ router.get(
       if (!type) {
         return res.status(40).json(createResponse(false, "Type is required"));
       }
-      console.log('selecting: ',type)
+      console.log("selecting: ", type);
       if (
         type !== "all" &&
         !VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)
       ) {
         return res.status(403).json(createResponse(false, "Invalid Payload"));
       }
-      const attempts = await attemptTestCollection
-        .find({
-          userId: ObjectId.createFromHexString(req.user.id),
-        },{
-        projection:{
-          startedAt:1,
-          expiredAt:1,
-          expiresAt:1,
-          testId:1
-        }
-      })
-        .toArray();
-      if (!attempts || attempts.length === 0) {
-        return res.status(204);
-      }
-      const testIdSet = [...new Set(attempts.map((a) => a.testId.toHexString()))].map(id=>ObjectId.createFromHexString(id));
-      console.log('test ID Set:',testIdSet)
-      console.log('Attempt: ',attempts)
       const meta = await metaTestCollection
-        .find(
-          {
-            _id: { $in: testIdSet },
-          },
-          {
-            projection: { 
-              _id: 1,
-              type: 1,
-              title: 1,
-            },
-          },
-        )
+        .find({
+          ...(type !== "all" && { type: type as VOUCHER_TYPEV }),
+        },{
+          projection:{
+            _id:1,
+            title:1,
+            titleSlug:1,
+            type:1
+          }
+        })
         .toArray();
-        console.log(meta)
+      console.log(meta);
+      const idSet = [...new Set(meta.map((v) => v._id))];
+      console.log(idSet);
+      const [attempts, total] = await Promise.all([
+        await attemptTestCollection
+          .find(
+            {
+              testId: { $in: idSet },
+              userId: ObjectId.createFromHexString(req.user.id),
+            },
+            { skip, limit: 6,projection:{
+              userId:1,
+              testId:1,
+              submittedAt:1,
+              expiredAt:1,
+              expiresAt:1,
+            } },
+          )
+          .toArray(),
+        await attemptTestCollection.countDocuments(),
+      ]);
+      console.log(attempts);
+      const attempsSet=[...new Set(attempts.map(v=>v.testId))]
+      const filterMetaWithExistedAttempt=meta.filter(v=>
+        attempsSet.some(id=>id.equals(v._id))
+      )
+      console.log(filterMetaWithExistedAttempt)
       return res.status(200).json(
-        createResponse(true, "Successfully fetch", attempts, false, meta),
+        createResponse(true, "Successfully fetch", attempts, false, {
+          ...(total!==0&&{info:filterMetaWithExistedAttempt}),
+          total: total,
+        }),
       );
     } catch (err) {
       return res
