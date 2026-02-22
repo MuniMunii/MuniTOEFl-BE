@@ -15,7 +15,7 @@ export function activatedVoucherFromParam() {
       if(!testId || !ObjectId.isValid(testId)){
         return res
           .status(400)
-          .json(createResponse(false, "Voucher type doesn't exist"));
+          .json(createResponse(false, "TestId is Invalid"));
       }
       const isTestFree=await db.collection('meta_tests').findOne({_id:ObjectId.createFromHexString(testId),isFree:true})
       if(isTestFree){

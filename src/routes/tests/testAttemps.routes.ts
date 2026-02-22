@@ -218,7 +218,7 @@ router.get(
           status: "in_progress",
           expiresAt: { $gt: now },
         },
-        { projection: { testId: 1, status: 1, answers: 1, userId: 1 } },
+        { projection: { testId: 1, status: 1, answers: 1, userId: 1,expiresAt:1 } },
       );
       if (!findActiveSession) {
         return res.status(204);
