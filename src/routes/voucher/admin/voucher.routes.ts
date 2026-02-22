@@ -5,8 +5,26 @@ import { requireRoleAdmin } from '../../../middleware/adminOnly.js';
 import clientPromise from '../../../config/mongo_client.js';
 import { createResponse } from '../../../utils/createResponse.js';
 import { nanoid } from 'nanoid';
-import { ObjectId } from 'mongodb';
 const router=Express.Router()
+/**
+ * @body {orderLength,duration,typeV}
+ *  -orderLength:
+ *   Purpose:how many voucher that will be generate
+ *   Max order: 10
+ * 
+ *  -duration:
+ *   Allowed:'1'|'3'|'5'
+ *   format: in month
+ * 
+ *  -typeV:
+ *   Allowed: "reading" | "listening" | "writing" | "speaking"
+ * 
+ * Purpose:
+ *  - create Vouchers
+ *
+ * Required Auth
+ * Only Admin
+ */
 router.post(
   "/vouchers",
   sessionMiddleware,
@@ -24,6 +42,10 @@ router.post(
         .db("muniquizNew")
         .collection("vouchers");
       const generateID = () => `STDF-${nanoid(6)}`;
+      const allowedDuration=['1','3','5']
+      if(!allowedDuration.includes(duration)){
+        return res.status(403).json(createResponse(false,'Invalid duration'))
+      }
       const vouchersData = Array.from({ length: orderLength }).map(() => ({
         id: generateID(),
         duration,
@@ -42,6 +64,18 @@ router.post(
     }
   }
 );
+
+/**
+ * @Param :id
+ *  -id:
+ *  Reference: id from vouchers
+ * 
+ * Purpose:
+ *  - delete specific voucher
+ *
+ * Required Auth
+ * Only Admin
+ */
 router.delete(
   "/vouchers/:id",
   sessionMiddleware,
@@ -75,6 +109,15 @@ router.delete(
     }
   }
 );
+
+/**
+ * Purpose:
+ *  - get all vouchers
+ *
+ * PS: adding query for filtering in future
+ * Required Auth
+ * Only Admin
+ */
 router.get(
   "/vouchers",
   sessionMiddleware,

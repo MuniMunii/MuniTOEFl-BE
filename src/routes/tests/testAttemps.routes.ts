@@ -27,14 +27,14 @@ const router = Express.Router();
  * - type:
  *   Allowed: "reading" | "listening" | "writing" | "speaking"
  *   FilterPurpose: for middleware activatedVoucherFromParam
- * 
+ *
  * @Param :testId
- * - testId: 
+ * - testId:
  *     reference: testId from questions_test
- * 
+ *
  * Purpose:
  *  - get all question from collections questions_test
- * 
+ *
  * Required Auth
  * Required active voucher if pay content, ignored if free
  */
@@ -84,13 +84,13 @@ router.get(
 );
 /**
  * @Param :testId
- * - testId: 
- *     reference: testId from meta_tests
- * 
+ * - testId:
+ *     reference: _id from meta_tests
+ *
  * Purpose:
  *  - Create first attempt test for saving answers etc
  *  - Simple description is like giving paper to you when doing exams
- * 
+ *
  * Required Auth
  * Required active voucher if pay content, ignored if free
  */
@@ -185,12 +185,12 @@ router.post(
 );
 /**
  * @Param :testId
- * - testId: 
+ * - testId:
  *     reference: testId from collection attempt_tests
- * 
+ *
  * Purpose:
  *  - Get saved answer/session and give to Frontend for button,etc
- * 
+ *
  * Required Auth
  * Required active voucher if pay content, ignored if free
  */
@@ -235,9 +235,9 @@ router.get(
 );
 /**
  * @Param :testId
- * - testId: 
+ * - testId:
  *     reference: testId from collection attempt_tests
- * 
+ *
  * Required Auth
  * Required active voucher if pay content, ignored if free
  */
@@ -333,9 +333,9 @@ router.patch(
 
 /**
  * @Param :testId
- * - testId: 
+ * - testId:
  *     reference: testId from collection attempt-tests
- * 
+ *
  * Required Auth
  * Required active voucher if pay content, ignored if free
  */
@@ -398,9 +398,9 @@ router.post(
 );
 /**
  * @Param :attemptId
- * - attemptId: 
+ * - attemptId:
  *     reference: _id from collection attempt_tests
- * 
+ *
  * Required Auth
  */
 router.get(
@@ -460,14 +460,14 @@ router.get(
 );
 /**
  * @query ?type=:type&page=:page
- * - types (string|optional): 
+ * - types (string|optional):
  *     Allowed: "reading" | "listening" | "writing" | "speaking" | "all" or <VOUCHER_TYPEV,{"all"}
  *     Default: "all"
- * 
+ *
  * Pagination
  * - Page (number|optional):
  *     Default: "1"
- * 
+ *
  * Required Auth
  */
 router.get(
@@ -495,16 +495,19 @@ router.get(
         return res.status(403).json(createResponse(false, "Invalid Payload"));
       }
       const meta = await metaTestCollection
-        .find({
-          ...(type !== "all" && { type: type as VOUCHER_TYPEV }),
-        },{
-          projection:{
-            _id:1,
-            title:1,
-            titleSlug:1,
-            type:1
-          }
-        })
+        .find(
+          {
+            ...(type !== "all" && { type: type as VOUCHER_TYPEV }),
+          },
+          {
+            projection: {
+              _id: 1,
+              title: 1,
+              titleSlug: 1,
+              type: 1,
+            },
+          },
+        )
         .toArray();
       console.log(meta);
       const idSet = [...new Set(meta.map((v) => v._id))];
@@ -516,26 +519,31 @@ router.get(
               testId: { $in: idSet },
               userId: ObjectId.createFromHexString(req.user.id),
             },
-            { skip, limit: 6,projection:{
-              userId:1,
-              testId:1,
-              submittedAt:1,
-              expiredAt:1,
-              expiresAt:1,
-            } },
+            {
+              skip,
+              limit: 6,
+              projection: {
+                status:1,
+                userId: 1,
+                testId: 1,
+                submittedAt: 1,
+                expiredAt: 1,
+                expiresAt: 1,
+              },
+            },
           )
           .toArray(),
         await attemptTestCollection.countDocuments(),
       ]);
       console.log(attempts);
-      const attempsSet=[...new Set(attempts.map(v=>v.testId))]
-      const filterMetaWithExistedAttempt=meta.filter(v=>
-        attempsSet.some(id=>id.equals(v._id))
-      )
-      console.log(filterMetaWithExistedAttempt)
+      const attempsSet = [...new Set(attempts.map((v) => v.testId))];
+      const filterMetaWithExistedAttempt = meta.filter((v) =>
+        attempsSet.some((id) => id.equals(v._id)),
+      );
+      console.log(filterMetaWithExistedAttempt);
       return res.status(200).json(
         createResponse(true, "Successfully fetch", attempts, false, {
-          ...(total!==0&&{info:filterMetaWithExistedAttempt}),
+          ...(total !== 0 && { info: filterMetaWithExistedAttempt }),
           total: total,
         }),
       );

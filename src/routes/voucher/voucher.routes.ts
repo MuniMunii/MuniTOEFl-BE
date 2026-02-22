@@ -8,6 +8,16 @@ import type { ActivatedVoucherType } from "../../model/voucherScheme.js";
 import { ObjectId } from "mongodb";
 import { activatedVoucherFromParam } from "../../middleware/activatedVoucher.js";
 const router = Express.Router();
+/**
+ * @Body {id}
+ *  -id:
+ *   Reference: id from vouchers
+ *
+ * Purpose:
+ *  - Activate user voucher if voucher exist
+ *
+ * Required Auth
+ */
 router.post(
   "/activate-voucher",
   sessionMiddleware,
@@ -28,8 +38,8 @@ router.post(
               false,
               "Voucher not found",
               null,
-              "Voucher not found"
-            )
+              "Voucher not found",
+            ),
           );
       }
       await voucher.updateOne({ id }, { $set: { used: true } });
@@ -54,16 +64,23 @@ router.post(
             true,
             "Voucher Activated",
             activatedVoucherObject,
-            null
-          )
+            null,
+          ),
         );
     } catch (err) {
       res
         .status(500)
         .json(createResponse(false, "Internal server error", null));
     }
-  }
+  },
 );
+
+/**
+ * Purpose:
+ *  - Get all activated voucher by user
+ *
+ * Required Auth
+ */
 router.get(
   "/active-vouchers",
   sessionMiddleware,
@@ -74,17 +91,17 @@ router.get(
       const activatedVoucher = (await clientPromise)
         .db("muniquizNew")
         .collection("activated_vouchers");
-      const findActivatedVoucherByUser =await activatedVoucher
+      const findActivatedVoucherByUser = await activatedVoucher
         .find({ usedBy: ObjectId.createFromHexString(id) })
         .toArray();
-      if (findActivatedVoucherByUser.length===0) {
+      if (findActivatedVoucherByUser.length === 0) {
         return res
           .status(404)
           .json(createResponse(false, "Dont have active voucher", null));
       }
       const now = new Date();
-      const activeVouchers = (await findActivatedVoucherByUser).filter(
-        (v) => new Date(v.expiredAt).getTime() > now.getTime()
+      const activeVouchers = findActivatedVoucherByUser.filter(
+        (v) => new Date(v.expiredAt).getTime() > now.getTime(),
       );
       if (activeVouchers.length === 0) {
         return res
@@ -99,49 +116,55 @@ router.get(
         .status(500)
         .json(createResponse(false, "Internal server error", null));
     }
-  }
+  },
 );
-// router.get('/get-active-voucher-test',sessionMiddleware,requireAuth,async (req:Request,res:Response)=>{
-//   try{
-//   const {name}=req.user
-//   const dateNow=new Date()
-//   const activeVouchers=(await clientPromise).db('muniquizNew').collection("activated_vouchers")
-//   const metaTest=(await clientPromise).db('muniquizNew').collection("meta_tests")
-//   const getActivatedVoucherByUser=await activeVouchers.find({usedBy:name,expiredAt:{$gt:dateNow}}).toArray()
-//   // ambil types yang udah di activasi sama user dengan mapping typeV
-//   const unlockedTypes=new Set(getActivatedVoucherByUser.map(v=>v.typeV))
-//   // return data yang test free dan type yang sudah di unlock sama user dengan di compare sama set di atas
-//   const getTest=await metaTest.find({$or:[
-//     {free:true},
-//     {type:{$in:unlockedTypes}}
-//   ]}).toArray()
-//   return res.json(createResponse(true,'Successfully fetch',getTest,false,))
-// }catch(err){
-//       res
-//         .status(500)
-//         .json(createResponse(false, "Internal server error", null));
-//     }
-// })
 
-// for loader endpoint and check user test session and its only for UX
-router.get('/voucher-session/:type/:testId',sessionMiddleware,requireAuth,activatedVoucherFromParam(),async(req:Request,res:Response)=>{
-  try{
-    const {testId}=req.params
-    if(!testId||!ObjectId.isValid(testId)){
-      return res.status(403).json(createResponse(false,'test id not found'))
-    }
-    const attemptTestsCollection=(await clientPromise).db('muniquizNew').collection('attempt_tests');
-    const findTestSession=await attemptTestsCollection.findOne({
-      testId:ObjectId.createFromHexString(testId),
-      userId:ObjectId.createFromHexString(req.user.id),
-      expiresAt:{$gt:new Date()}
-    })
-    res.status(200).json(createResponse(true,'success',findTestSession?findTestSession:'no session'))
-  }
-  catch(err){
+/**
+ * @Param {:testId,:type}
+ *  -testId:
+ *   Reference: reference from _id meta_tests
+ * 
+ *  -type:
+ *   Allowed: "reading" | "listening" | "writing" | "speaking"
+ * 
+ * Purpose:
+ *  - for loader endpoint and check user test session and its only for UX
+ *
+ * Required Auth
+ */
+router.get(
+  "/vouchers/:type/metadata/:testId/active-session",
+  sessionMiddleware,
+  requireAuth,
+  activatedVoucherFromParam(),
+  async (req: Request, res: Response) => {
+    try {
+      const { testId } = req.params;
+      if (!testId || !ObjectId.isValid(testId)) {
+        return res.status(403).json(createResponse(false, "test id not found"));
+      }
+      const attemptTestsCollection = (await clientPromise)
+        .db("muniquizNew")
+        .collection("attempt_tests");
+      const findTestSession = await attemptTestsCollection.findOne({
+        testId: ObjectId.createFromHexString(testId),
+        userId: ObjectId.createFromHexString(req.user.id),
+        expiresAt: { $gt: new Date() },
+      });
+      res
+        .status(200)
+        .json(
+          createResponse(
+            true,
+            "success",
+            findTestSession ? findTestSession : "no session",
+          ),
+        );
+    } catch (err) {
       res
         .status(500)
         .json(createResponse(false, "Internal server error", null));
     }
-})
+  },
+);
 export default router;

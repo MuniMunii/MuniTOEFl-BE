@@ -1,4 +1,4 @@
-import Express,{type Request,type Response} from "express";
+import Express, { type Request, type Response } from "express";
 import {
   ALLOWED_META_PROPS,
   metaTestDataScheme,
@@ -15,8 +15,18 @@ import { sessionMiddleware } from "../../../middleware/sessionMiddleware.js";
 import { requireAuth } from "../../../middleware/protectedApi.js";
 import clientPromise from "../../../config/mongo_client.js";
 import { createResponse } from "../../../utils/createResponse.js";
-import { VALID_VOUCHER_TYPEV, type VOUCHER_TYPEV } from "../../../model/voucherScheme.js";
-const router=Express.Router()
+import {
+  VALID_VOUCHER_TYPEV,
+  type VOUCHER_TYPEV,
+} from "../../../model/voucherScheme.js";
+const router = Express.Router();
+/**
+ * Purpose:
+ *  - create metatest
+ *
+ * Required Auth
+ * Only admin
+ */
 router.post(
   "/create-test",
   sessionMiddleware,
@@ -25,13 +35,13 @@ router.post(
   async (req: Request, res: Response) => {
     const session = (await clientPromise).startSession();
     try {
-      const now=new Date()
+      const now = new Date();
       const parsed = metaTestDataScheme.safeParse({
         ...req.body,
         titleSlug: slugify(req.body.title),
         published: false,
         time: "120m",
-        createdAt:now
+        createdAt: now,
       });
       if (!parsed.success) {
         return res
@@ -67,8 +77,16 @@ router.post(
         qTitle: "Question Title",
         qDescription: EMPTY_DESCRIPTION_STATE,
         choices: [
-          { cTitle: "Title choices 1", correctAnswer: true,choiceId:nanoid(10) },
-          { cTitle: "Title choices 2", correctAnswer: false,choiceId:nanoid(10)},
+          {
+            cTitle: "Title choices 1",
+            correctAnswer: true,
+            choiceId: nanoid(10),
+          },
+          {
+            cTitle: "Title choices 2",
+            correctAnswer: false,
+            choiceId: nanoid(10),
+          },
         ],
       };
       await questions.insertOne(questionData, { session });
@@ -92,17 +110,31 @@ router.post(
     }
   },
 );
+/**
+ * @Query :type
+ * - type (optional|string):
+ *   Allowed: "reading" | "listening" | "writing" | "speaking"
+ *
+ * Purpose:
+ *  - get all test metatest
+ *
+ * PS: Adding published query in the future
+ *
+ * Required Auth
+ * Only admin
+ */
 router.get(
   "/tests",
   sessionMiddleware,
   requireAuth,
+  requireRoleAdmin("admin"),
   async (req: Request, res: Response) => {
     try {
-      const type  = req.query.type as VOUCHER_TYPEV;
+      const type = req.query.type as VOUCHER_TYPEV;
       const db = (await clientPromise).db("muniquizNew");
       const metaTestCollections = db.collection("meta_tests");
       const findTestByType = await metaTestCollections.find({ type }).toArray();
-    if(!VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)){
+      if (!VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)) {
         return res
           .status(403)
           .json(createResponse(false, "Type not found", null));
@@ -130,6 +162,17 @@ router.get(
     }
   },
 );
+/**
+ * @Param :id
+ * - id:
+ *   Reference: _id from metatest
+ *
+ * Purpose:
+ *  - Delete specific test and cascade delete question from reference metatest
+ *
+ * Required Auth
+ * Only admin
+ */
 router.delete(
   "/tests/:id",
   sessionMiddleware,
@@ -139,8 +182,8 @@ router.delete(
     const session = (await clientPromise).startSession();
     try {
       const { id } = req.params;
-      if(!id||!ObjectId.isValid(id)){
-        return res.status(403).json(createResponse(false,'Invalid Id'))
+      if (!id || !ObjectId.isValid(id)) {
+        return res.status(403).json(createResponse(false, "Invalid Id"));
       }
       const db = (await clientPromise).db("muniquizNew");
       const _id = ObjectId.createFromHexString(id);
@@ -175,8 +218,19 @@ router.delete(
     }
   },
 );
+/**
+ * @Param :testId
+ * - testId:
+ *   Reference: _id from metatest
+ *
+ * Purpose:
+ *  - get all questions from questions_test with testId as reference
+ *
+ * Required Auth
+ * Only admin
+ */
 router.get(
-  "/questions/:testId",
+  "/metadata/:testId/questions",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -224,6 +278,17 @@ router.get(
     }
   },
 );
+/**
+ * @Param :testId
+ * - testId:
+ *   Reference: _id from metatest
+ *
+ * Purpose:
+ *  - add question
+ *
+ * Required Auth
+ * Only admin
+ */
 router.post(
   "/metadata/:testId/questions",
   sessionMiddleware,
@@ -279,8 +344,16 @@ router.post(
         qTitle: "Question Title",
         qDescription: EMPTY_DESCRIPTION_STATE,
         choices: [
-          { cTitle: "Title choices 1", correctAnswer: true,choiceId:nanoid(10)},
-          { cTitle: "Title choices 2", correctAnswer: false,choiceId:nanoid(10)},
+          {
+            cTitle: "Title choices 1",
+            correctAnswer: true,
+            choiceId: nanoid(10),
+          },
+          {
+            cTitle: "Title choices 2",
+            correctAnswer: false,
+            choiceId: nanoid(10),
+          },
         ],
       };
       await questionsTestCollection.insertOne(questionData);
@@ -296,6 +369,20 @@ router.post(
     }
   },
 );
+/**
+ * @Param (:testId,:questionId)
+ * - testId:
+ *   Reference: _id from metatest
+ *
+ * - questionId:
+ *   Reference: questionId from questions_test
+ *
+ * Purpose:
+ *  - delete question
+ *
+ * Required Auth
+ * Only admin
+ */
 router.delete(
   "/metadata/:testId/questions/:questionId",
   sessionMiddleware,
@@ -315,14 +402,14 @@ router.delete(
               "Must have testId and _id",
             ),
           );
-          if(!ObjectId.isValid(questionId)||!ObjectId.isValid(testId)){
-            return res.status(403).json(createResponse(false,'id not valid'))
-          }
+      if (!ObjectId.isValid(questionId) || !ObjectId.isValid(testId)) {
+        return res.status(403).json(createResponse(false, "id not valid"));
+      }
       const questionsTest = (await clientPromise)
         .db("muniquizNew")
         .collection("questions_test");
       const testIdToObjectId = ObjectId.createFromHexString(testId);
-      const _id=ObjectId.createFromHexString(questionId)
+      const _id = ObjectId.createFromHexString(questionId);
       const findQuestion = await questionsTest.findOne({
         testId: testIdToObjectId,
         _id,
@@ -351,6 +438,17 @@ router.delete(
     }
   },
 );
+/**
+ * @Param :testId
+ * - testId:
+ *   Reference: _id from metatest
+ *
+ * Purpose:
+ *  - save questions
+ *
+ * Required Auth
+ * Only admin
+ */
 router.patch(
   "/metadata/:testId/questions/save",
   sessionMiddleware,
@@ -408,8 +506,24 @@ router.patch(
   },
 );
 
+/**
+ * @Param (:testId,:prop)
+ * - testId:
+ *   Reference: _id from metatest
+ *
+ * - questionId:
+ *   allowed: "title" | "titleSlug" | "type" | "published" | "description" | "time" | "isFree" | "createdAt" | "publishedAt" or AllowedMetaProps type
+ *
+ * Purpose:
+ *  - save specific props metadata
+ *
+ * PS: this endpoint is autosave and only save 1 props at same time
+ *
+ * Required Auth
+ * Only admin
+ */
 router.patch(
-  "/metadata/:testId/:prop",
+  "/metadata/:testId/:prop/save",
   sessionMiddleware,
   requireAuth,
   requireRoleAdmin("admin"),
@@ -444,17 +558,18 @@ router.patch(
       const _id = ObjectId.createFromHexString(testId);
       const findMetaTestCollection = await metaTestCollection.findOne({ _id });
       if (!findMetaTestCollection) return res.sendStatus(204);
-        await metaTestCollection.updateOne(
-          { _id },
-          prop === "published"
-            ? {
-                $set: value
-                  ? { published: true, publishedAt: new Date() }
-                  : { published: false },
-                $unset: value ? {} : { publishedAt: "" },
-              }
-            : { $set: { [prop]: value } }
-        );      res.status(200).json(createResponse(true, "Updated successfully", null));
+      await metaTestCollection.updateOne(
+        { _id },
+        prop === "published"
+          ? {
+              $set: value
+                ? { published: true, publishedAt: new Date() }
+                : { published: false },
+              $unset: value ? {} : { publishedAt: "" },
+            }
+          : { $set: { [prop]: value } },
+      );
+      res.status(200).json(createResponse(true, "Updated successfully", null));
     } catch (err) {
       return res
         .status(500)
@@ -462,4 +577,4 @@ router.patch(
     }
   },
 );
-export default router
+export default router;
