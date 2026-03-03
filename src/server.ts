@@ -17,10 +17,10 @@ const port=3000
 // Whitelist for temporary/dev
 await initIndexes()
 app.use(cors({origin:['http://localhost:5173'],credentials:true}))
+app.all('/api/auth/*splat',toNodeHandler(auth))
 app.use(Express.json());
 app.use(Express.urlencoded({ extended: true }));
 app.use(cookieParser())
-app.use('/api/auth/*splat',toNodeHandler(auth))
 app.use(
   "/api/voucher",
   rateLimit({ windowMs: 1 * 60 * 1000, limit: 20,

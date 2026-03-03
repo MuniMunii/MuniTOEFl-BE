@@ -1,17 +1,25 @@
-import {betterAuth}from 'better-auth'
+import {betterAuth, type BetterAuthOptions}from 'better-auth'
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import clientPromise from '../../config/mongo_client.js';
-import {admin}from 'better-auth/plugins'
-const db=(await clientPromise).db("muniquizNew") 
-const client=await clientPromise
+import {admin}from 'better-auth/plugins';
+import { expo } from "@better-auth/expo";
+const client = await clientPromise
+const db = client.db("muniquizNew")
 export const auth=betterAuth({
-  plugins:[admin()],
+  plugins:[admin(),expo({disableOriginOverride:true})],
   rateLimit:{enabled:true,window:15 * 60 * 1000,max:5},
   database:mongodbAdapter(db,{client:client}),
   // nanti di change ke origin asli saat di deploy
-  trustedOrigins:['http://localhost:5173'],
+  trustedOrigins:[
+"myapp://",
+ "myapp://*",
+ "exp://**",
+ "exp://", 
+  "exp://**", 
+ "http://localhost:5173",
+ "http://192.168.1.*",
+"exp://192.168.*.*:*/**",],
   emailAndPassword:{enabled:true}, 
-  
   user:{additionalFields:{
     role:{type:"string",input:false,defaultValue:'user'},
     noTelp:{type:'string',input:true}
@@ -29,6 +37,5 @@ export const auth=betterAuth({
   },
         expiresIn: 60 * 60 * 24 * 7,
         updateAge: 60 * 60 * 24
-    }
-    
+    },
 })
