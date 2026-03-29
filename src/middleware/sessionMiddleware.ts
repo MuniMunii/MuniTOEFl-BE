@@ -4,11 +4,10 @@ import type { NextFunction,Request,Response } from "express";
 export const sessionMiddleware = async (req:Request, res:Response, next:NextFunction) => {
   try {
     const result = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers)
+      headers: fromNodeHeaders(req.headers),
     });
     req.session = result?.session || null;
     req.user = result?.user || null;
-    console.log('test mobile:'+result)
     next();
   } catch (err) {
     req.session = null;

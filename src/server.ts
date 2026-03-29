@@ -10,13 +10,14 @@ import TestRoutes from './routes/tests/tests.routes.js'
 import AdminTestRoutes from './routes/tests/admin/tests.routes.js'
 import TestAttempsRoutes from './routes/tests/testAttemps.routes.js'
 import { initIndexes } from "./utils/initIndex.js";
-import {rateLimit} from "express-rate-limit"
+import {ipKeyGenerator, rateLimit} from "express-rate-limit"
 const app=Express()
 const port=3000
 
 // Whitelist for temporary/dev
 await initIndexes()
 app.use(cors({origin:['http://localhost:5173'],credentials:true}))
+app.set('trust proxy', 1)
 app.all('/api/auth/*splat',toNodeHandler(auth))
 app.use(Express.json());
 app.use(Express.urlencoded({ extended: true }));
@@ -24,19 +25,26 @@ app.use(cookieParser())
 app.use(
   "/api/voucher",
   rateLimit({ windowMs: 1 * 60 * 1000, limit: 20,
-    message: "Too many requests, please try again later.", }),
+    message: "Too many requests, please try again later.",keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')}, }),
   VoucherRoutes
 );
 app.use(
   "/api/admin/voucher",
   rateLimit({ windowMs: 1 * 60 * 1000, limit: 20,
-    message: "Too many requests, please try again later.", }),
+    message: "Too many requests, please try again later.",keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')}, }),
   AdminVoucherRoutes
 );
 app.use(
   "/api/user",
   rateLimit({ windowMs: 5 * 60 * 1000, limit: 50,
-    message: "Too many requests, please try again later.", }),
+    message: "Too many requests, please try again later.",keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')}, }),
+    
   UsersRoutes
 );
 app.use(
@@ -45,6 +53,9 @@ app.use(
     windowMs: 1 * 60 * 1000,
     limit: 100,
     message: "Too many requests, please try again later.",
+    keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')},
   }),
   TestRoutes
 );
@@ -54,6 +65,9 @@ app.use(
     windowMs: 1 * 60 * 1000,
     limit: 100,
     message: "Too many requests, please try again later.",
+    keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')},
   }),
   AdminTestRoutes
 );
@@ -63,6 +77,9 @@ app.use(
   windowMs: 1 * 60 * 1000,
   limit: 500,
     message: "Too many requests, please try again later.",
+    keyGenerator:(req)=>{
+      if(req.user?.id)req.user.id;
+      return ipKeyGenerator(req.ip??'unknown')},
   }),
   TestAttempsRoutes
 );

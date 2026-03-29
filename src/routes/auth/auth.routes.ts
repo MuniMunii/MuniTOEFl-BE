@@ -6,8 +6,9 @@ import { expo } from "@better-auth/expo";
 const client = await clientPromise
 const db = client.db("muniquizNew")
 export const auth=betterAuth({
-  plugins:[admin(),expo({disableOriginOverride:true})],
-  rateLimit:{enabled:true,window:15 * 60 * 1000,max:5},
+  baseURL:process.env.NGROK_URL??'http://localhost:3000',
+  plugins:[admin(),expo()],
+rateLimit:{enabled:process.env.NODE_ENV==='production',window:15 * 60 * 1000,max:5},
   database:mongodbAdapter(db,{client:client}),
   // nanti di change ke origin asli saat di deploy
   trustedOrigins:[
@@ -15,11 +16,12 @@ export const auth=betterAuth({
  "myapp://*",
  "exp://**",
  "exp://", 
-  "exp://**", 
+ "exp://**", 
  "http://localhost:5173",
  "http://192.168.1.*",
-"exp://192.168.*.*:*/**",],
-  emailAndPassword:{enabled:true}, 
+"exp://192.168.*.*:*/**",
+process.env.NGROK_URL?process.env.NGROK_URL:''],
+  emailAndPassword:{enabled:true,autoSignIn:false}, 
   user:{additionalFields:{
     role:{type:"string",input:false,defaultValue:'user'},
     noTelp:{type:'string',input:true}

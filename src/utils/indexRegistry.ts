@@ -21,6 +21,16 @@ export const indexRegistry: CollectionIndexes[] = [
     ],
   },
   {
+     collection: "user",
+    indexes: [
+      {
+        keys: { email:1 },
+        options: { unique: true,name:"user_email_key" },
+      },
+      {keys:{published:1,type:1,createdAt:-1}}
+    ],
+  },
+  {
     collection:"questions_test",
     indexes:[
       {

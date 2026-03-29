@@ -183,6 +183,47 @@ router.post(
     }
   },
 );
+
+/**
+ * Purpose:
+ *  - Get all active session
+ *
+ * Required Auth
+ */
+router.get(
+  "/tests/active-session",
+  sessionMiddleware,
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const now = new Date();
+      const db = (await clientPromise).db("muniquizNew");
+      const attemptTestCollection =
+        db.collection<TestAttemptType>("attempt_tests");
+      const findActiveSession = await attemptTestCollection
+        .find({
+                userId: ObjectId.createFromHexString(req.user.id),
+                status: "in_progress",
+                expiresAt: { gt: now },
+        },{projection:{_id:1,testId:1,status:1,expires_at:1}})
+        .toArray();
+        if(!findActiveSession){
+          return res.status(204)
+        }
+        const sessionTestId=[...new Set(findActiveSession.map(v=>v.testId))]
+        const findMetaTest=await db.collection<metaTestDataType>('meta_tests').find({testId:{$in:sessionTestId}},{projection:{_id:1,title:1,titleSlug:1,type:1}}).toArray()
+        const data=findActiveSession.map(v=>{
+          const metaTest=findMetaTest.find(meta=>meta._id===v.testId)
+          return {...v,title:metaTest?.title,titleSlug:metaTest?.titleSlug,type:metaTest?.type}
+        })
+        res.status(200).json(createResponse(true,"Success fetch active session",data))
+    } catch (err) {
+      return res
+        .status(500)
+        .json(createResponse(false, "Internal Server Error", null, err));
+    }
+  },
+);
 /**
  * @Param :testId
  * - testId:
@@ -218,7 +259,15 @@ router.get(
           status: "in_progress",
           expiresAt: { $gt: now },
         },
-        { projection: { testId: 1, status: 1, answers: 1, userId: 1,expiresAt:1 } },
+        {
+          projection: {
+            testId: 1,
+            status: 1,
+            answers: 1,
+            userId: 1,
+            expiresAt: 1,
+          },
+        },
       );
       if (!findActiveSession) {
         return res.status(204);
@@ -523,7 +572,7 @@ router.get(
               skip,
               limit: 6,
               projection: {
-                status:1,
+                status: 1,
                 userId: 1,
                 testId: 1,
                 submittedAt: 1,
