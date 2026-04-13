@@ -157,7 +157,7 @@ router.get(
           createResponse(
             true,
             "success",
-            findTestSession ? findTestSession : "no session",
+            findTestSession ? findTestSession : null,
           ),
         );
     } catch (err) {
