@@ -32,11 +32,11 @@ router.get(
       const { type, titleSlug } = req.params;
       if (!type || !titleSlug)
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Type or Title is empty", null));
       if (!VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)) {
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Type not found", null));
       }
       const db = (await clientPromise).db("muniquizNew");
@@ -86,7 +86,7 @@ router.get("/metadata/published", async (req: Request, res: Response) => {
   try {
     const type = req.query.type as VOUCHER_TYPEV;
     if (!VALID_VOUCHER_TYPEV.includes(type)) {
-      return res.status(403).json(createResponse(false, "type is not found"));
+      return res.status(400).json(createResponse(false, "type is not found"));
     }
     const page = Math.max(Number(req.query.page) || 1, 1);
     const PAGE_SIZE = 6;

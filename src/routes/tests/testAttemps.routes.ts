@@ -191,7 +191,7 @@ router.post(
  * Required Auth
  */
 router.get(
-  "/tests/active-session",
+  "/test/active-session",
   sessionMiddleware,
   requireAuth,
   async (req: Request, res: Response) => {
@@ -204,18 +204,23 @@ router.get(
         .find({
                 userId: ObjectId.createFromHexString(req.user.id),
                 status: "in_progress",
-                expiresAt: { gt: now },
+                expiresAt: { $gt: now },
         },{projection:{_id:1,testId:1,status:1,expires_at:1}})
         .toArray();
-        if(!findActiveSession){
-          return res.status(204)
+        if(!findActiveSession||findActiveSession.length ===0 ){
+          return res.status(200).json(createResponse(true, "Fetch Success", null));
         }
+        console.log('active Session: ',findActiveSession,"userId: ",req.user.id)
         const sessionTestId=[...new Set(findActiveSession.map(v=>v.testId))]
-        const findMetaTest=await db.collection<metaTestDataType>('meta_tests').find({testId:{$in:sessionTestId}},{projection:{_id:1,title:1,titleSlug:1,type:1}}).toArray()
+        console.log(sessionTestId,sessionTestId.map(v=>ObjectId.isValid(v)))
+        const findMetaTest=await db.collection<metaTestDataType>('meta_tests').find({_id:{$in:sessionTestId}},{projection:{_id:1,title:1,titleSlug:1,type:1}}).toArray()
+        console.log(findMetaTest)
         const data=findActiveSession.map(v=>{
-          const metaTest=findMetaTest.find(meta=>meta._id===v.testId)
+          const metaTest=findMetaTest.find(meta=>meta._id.equals(v.testId))
+          console.log(metaTest)
           return {...v,title:metaTest?.title,titleSlug:metaTest?.titleSlug,type:metaTest?.type}
         })
+        console.log(data)
         res.status(200).json(createResponse(true,"Success fetch active session",data))
     } catch (err) {
       return res
@@ -236,7 +241,7 @@ router.get(
  * Required active voucher if pay content, ignored if free
  */
 router.get(
-  "/tests/:testId/active-session",
+  "/test/:testId/active-session",
   sessionMiddleware,
   requireAuth,
   requireTestAccess(),
@@ -245,7 +250,7 @@ router.get(
       const { testId } = req.params;
       if (!testId || !ObjectId.isValid(testId)) {
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Test Id Invalid", null));
       }
       const AttemptTestCollection = (await clientPromise)
@@ -270,7 +275,7 @@ router.get(
         },
       );
       if (!findActiveSession) {
-        return res.status(204);
+        return res.status(200).json(createResponse(true, "Fetch Success", null));
       }
       res
         .status(200)
@@ -398,7 +403,7 @@ router.post(
       const { testId } = req.params;
       if (!testId || !ObjectId.isValid(testId)) {
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Invalid test id", null));
       }
       const attemptTestCollection = (await clientPromise)
@@ -461,7 +466,7 @@ router.get(
       const { attemptId } = req.params;
       if (!attemptId || !ObjectId.isValid(attemptId)) {
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Attempt id not found"));
       }
       const db = (await clientPromise).db("muniquizNew");
@@ -469,6 +474,7 @@ router.get(
         db.collection<QuestionType>("questions_test");
       const attemptTestCollection =
         db.collection<TestAttemptType>("attempt_tests");
+        // console.log('attemptId ',attemptId, req.user.id)
       const findTest = await attemptTestCollection.findOne({
         _id: ObjectId.createFromHexString(attemptId),
         userId: ObjectId.createFromHexString(req.user.id),
@@ -525,7 +531,7 @@ router.get(
   requireAuth,
   async (req: Request, res: Response) => {
     try {
-      const type = req.query.type as string | undefined;
+      const type = req.query.type as string | undefined??'all';
       const page = Math.max(Number(req.query.page) || 1, 1);
       const PAGE_SIZE = 6;
       const skip = (page - 1) * PAGE_SIZE;
@@ -534,14 +540,14 @@ router.get(
         db.collection<TestAttemptType>("attempt_tests");
       const metaTestCollection = db.collection<MetaTestDoc>("meta_tests");
       if (!type) {
-        return res.status(40).json(createResponse(false, "Type is required"));
+        return res.status(400).json(createResponse(false, "Type is required"));
       }
       console.log("selecting: ", type);
       if (
         type !== "all" &&
         !VALID_VOUCHER_TYPEV.includes(type as VOUCHER_TYPEV)
       ) {
-        return res.status(403).json(createResponse(false, "Invalid Payload"));
+        return res.status(400).json(createResponse(false, "Invalid Payload"));
       }
       const meta = await metaTestCollection
         .find(
@@ -562,7 +568,7 @@ router.get(
       const idSet = [...new Set(meta.map((v) => v._id))];
       console.log(idSet);
       const [attempts, total] = await Promise.all([
-        await attemptTestCollection
+        attemptTestCollection
           .find(
             {
               testId: { $in: idSet },
@@ -570,8 +576,9 @@ router.get(
             },
             {
               skip,
-              limit: 6,
+              limit: PAGE_SIZE,
               projection: {
+                _id:1,
                 status: 1,
                 userId: 1,
                 testId: 1,
@@ -581,8 +588,12 @@ router.get(
               },
             },
           )
+          .sort({submittedAt:-1})
           .toArray(),
-        await attemptTestCollection.countDocuments(),
+        await attemptTestCollection.countDocuments({
+              testId: { $in: idSet },
+              userId: ObjectId.createFromHexString(req.user.id),
+            }),
       ]);
       console.log(attempts);
       const attempsSet = [...new Set(attempts.map((v) => v.testId))];
@@ -597,6 +608,7 @@ router.get(
         }),
       );
     } catch (err) {
+      console.log(err)
       return res
         .status(500)
         .json(createResponse(false, "Internal Server Error", null, err));

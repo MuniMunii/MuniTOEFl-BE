@@ -29,7 +29,6 @@ router.post(
         .db("muniquizNew")
         .collection("vouchers");
       const findVoucher = await voucher.findOne({ id: id });
-      console.log(id);
       if (!findVoucher) {
         return res
           .status(404)
@@ -105,7 +104,7 @@ router.get(
       );
       if (activeVouchers.length === 0) {
         return res
-          .status(404)
+          .status(200)
           .json(createResponse(false, "All vouchers expired", null));
       }
       res
@@ -118,7 +117,14 @@ router.get(
     }
   },
 );
-
+// router.get('/test-hit',
+//   sessionMiddleware,
+//   requireAuth,async(req:Request,res:Response)=>{
+//     try{return res.status(200).json(createResponse(true,"hit",[{test:'sss'}]))}catch(err){
+//       res.status(500)
+//         .json(createResponse(false, "Internal server error", null));
+//     }}
+//   )
 /**
  * @Param {:testId,:type}
  *  -testId:
@@ -141,7 +147,7 @@ router.get(
     try {
       const { testId } = req.params;
       if (!testId || !ObjectId.isValid(testId)) {
-        return res.status(403).json(createResponse(false, "test id not found"));
+        return res.status(400).json(createResponse(false, "test id not found"));
       }
       const attemptTestsCollection = (await clientPromise)
         .db("muniquizNew")

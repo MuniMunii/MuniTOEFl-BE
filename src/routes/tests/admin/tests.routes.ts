@@ -299,7 +299,7 @@ router.post(
       const { testId } = req.params;
       if (!testId)
         return res
-          .status(403)
+          .status(400)
           .json(createResponse(false, "Need testId", null, "Need testId"));
       const questionsTestCollection = (await clientPromise)
         .db("muniquizNew")
@@ -393,7 +393,7 @@ router.delete(
       const { testId, questionId } = req.params;
       if (!testId || !questionId)
         return res
-          .status(403)
+          .status(400)
           .json(
             createResponse(
               false,
